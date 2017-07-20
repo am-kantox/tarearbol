@@ -18,6 +18,18 @@ defmodule TarearbolTest do
       end, delay: 10
   end
 
+  test "supports infinite re-execution until matched" do
+    assert {:ok, 42} ==
+      Tarearbol.Job.ensure_result fn ->
+        if Enum.random([1, 2]) == 1, do: {:ok, 42}, else: {:error, 42}
+      end, :ok, delay: 10
+
+    assert 42 ==
+      Tarearbol.Job.ensure_result! fn ->
+        if Enum.random([1, 2]) == 1, do: {:ok, 42}, else: {:error, 42}
+      end, :ok, delay: 10
+  end
+
   test "supports finite amount of attempts and raises" do
     assert_raise(Tarearbol.TaskFailedError, fn ->
       Tarearbol.Job.attempts(fn -> raise "¡!" end, 2, delay: 10, raise: true)

@@ -9,17 +9,24 @@ defmodule Tarearbol.Job do
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
-  def ensure(job, opts \\ []) do
-    do_retry(job, Keyword.merge(@ensure_opts, opts), -1)
-  end
-  def ensure!(job, opts \\ []) do
-    with {:ok, result} <- do_retry(job, Keyword.merge(@ensure_opts, opts), -1),
-      do: result
-  end
-
   def attempts(job, retries, opts \\ []) do
     do_retry(job, Keyword.merge(@ensure_opts, opts), retries - 1)
   end
+
+  def ensure(job, opts \\ []) do
+    attempts(job, 0, opts)
+  end
+  def ensure!(job, opts \\ []) do
+    with {:ok, result} <- ensure(job, opts), do: result
+  end
+
+  def ensure_result(job, result_ast, opts \\ []) do
+    do_retry_result(job, result_ast, Keyword.merge(@ensure_opts, opts), -1)
+  end
+  def ensure_result!(job, result_ast, opts \\ []) do
+    with {:ok, result} <- ensure_result(job, result_ast, opts), do: result
+  end
+
 
   ##############################################################################
 
@@ -52,6 +59,15 @@ defmodule Tarearbol.Job do
     do_retry(job, opts, retries_left - 1)
   end
 
+  defp retry_or_die(job, _result_ast, opts, data, retries_left) when retries_left == 0 do
+    on_problem(opts[:on_fail], data, @task_fail)
+    return_or_raise(job, data, opts[:raise])
+  end
+  defp retry_or_die(job, result_ast, opts, data, retries_left) do
+    on_problem(opts[:on_retry], data, @task_retry)
+    do_retry_result(job, result_ast, opts, retries_left - 1)
+  end
+
   defp do_retry(job, opts, retries_left) do
     case job |> Tarearbol.Application.task!() |> Task.yield() do
       {:exit, data} ->
@@ -60,6 +76,18 @@ defmodule Tarearbol.Job do
       result ->
         if is_function(opts[:on_success], 1), do: opts[:on_success].(result)
         result
+    end
+  end
+
+  defp do_retry_result(job, result_ast, opts, retries_left) do
+    {:ok, result} = job |> Tarearbol.Application.task!() |> Task.yield()
+    case result do
+      {^result_ast, _} ->
+        if is_function(opts[:on_success], 1), do: opts[:on_success].(result)
+        result
+      data ->
+        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        retry_or_die(job, result_ast, opts, {result_ast, "<-", data}, retries_left)
     end
   end
   # TODO: curry function passed, then start a task
