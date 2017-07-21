@@ -5,14 +5,14 @@ defmodule Tarearbol.Job do
 
   @default_ensure_opts [
     attempts: 0, delay: 0, raise: false, accept_not_ok: true,
-    on_success: nil, on_retry: :debug, on_fail: :debug]
+    on_success: nil, on_retry: :debug, on_fail: :warn]
   @ensure_opts Application.get_env(:tarearbol, :ensure_opts, @default_ensure_opts)
 
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
-    attempts = Keyword.get(opts, :attempts, -1)
+    attempts = opts |> Keyword.get(:attempts, :infinity) |> interval()
     opts = Keyword.delete(opts, :attempts)
     do_retry(job, Keyword.merge(@ensure_opts, opts), attempts)
   end
@@ -39,6 +39,21 @@ defmodule Tarearbol.Job do
     end
   end
 
+  defp interval(input) do
+    case input do
+      msec when is_integer(msec) -> msec
+      sec when is_float(sec) -> round(1000 * sec)
+      :tiny -> 10
+      :medium -> 100
+      :infinity -> -1
+      _ -> 0
+    end
+  end
+
+  defp delay(opts) do
+    opts[:delay] |> interval() |> abs() |> Process.sleep()
+  end
+
   defp do_log(level, message), do: Logger.log level, message
 
   defp return_or_raise(job, data, true),
@@ -58,13 +73,13 @@ defmodule Tarearbol.Job do
   defp do_retry(job, opts, retries_left) do
     case {opts[:accept_not_ok], job |> Tarearbol.Application.task!() |> Task.yield()} do
       {_, {:exit, data}} ->
-        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        delay(opts)
         retry_or_die(:on_raise, job, opts, data, retries_left)
       {_, {:error, data}} ->
-        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
       {_, {:ok, {:error, data}}} ->
-        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
       {_, {:ok, {:ok, data}}} ->
         if is_function(opts[:on_success], 1), do: opts[:on_success].(data)
@@ -73,10 +88,10 @@ defmodule Tarearbol.Job do
         if is_function(opts[:on_success], 1), do: opts[:on_success].(data)
         {:ok, data}
       {false, {:ok, data}} ->
-        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        delay(opts)
         retry_or_die(:not_ok, job, opts, data, retries_left)
       {_, that_can_not_happen_but} ->
-        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        delay(opts)
         retry_or_die(:unknown, job, opts, that_can_not_happen_but, retries_left)
     end
   end
