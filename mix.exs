@@ -45,7 +45,7 @@ defmodule Tarearbol.Mixfile do
   defp package do
     [
      name: @app,
-     files: ~w|config bin lib mix.exs README.md|,
+     files: ~w|config lib mix.exs README.md|,
      maintainers: ["Aleksei Matiushkin"],
      licenses: ["MIT"],
      links: %{"GitHub" => "https://github.com/mudasobwa/#{@app}",
