@@ -12,6 +12,9 @@ defmodule TarearbolTest do
         if Enum.random([1, 2]) == 1, do: 42, else: raise "¡!"
       end, delay: 10
 
+    assert {:ok, 42} ==
+      Tarearbol.Job.ensure {Tarearbol.TestTask, :run_raise, []}, delay: 10
+
     assert 42 ==
       Tarearbol.Job.ensure! fn ->
         if Enum.random([1, 2]) == 1, do: 42, else: raise "¡!"

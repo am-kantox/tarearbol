@@ -11,12 +11,12 @@ defmodule Tarearbol.Job do
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
-  def ensure(job, opts \\ []) do
+  def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     attempts = Keyword.get(opts, :attempts, -1)
     opts = Keyword.delete(opts, :attempts)
     do_retry(job, Keyword.merge(@ensure_opts, opts), attempts)
   end
-  def ensure!(job, opts \\ []) do
+  def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     with {:ok, result} <- ensure(job, opts) do
       result
     else
@@ -75,11 +75,9 @@ defmodule Tarearbol.Job do
       {false, {:ok, data}} ->
         if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
         retry_or_die(:not_ok, job, opts, data, retries_left)
+      {_, that_can_not_happen_but} ->
+        if is_integer(opts[:delay]), do: Process.sleep(opts[:delay])
+        retry_or_die(:unknown, job, opts, that_can_not_happen_but, retries_left)
     end
   end
-
-  # TODO: curry function passed, then start a task
-  # def run(fun, args \\ []) when is_function(mod, length(args)),
-  #   do: Tasl.Supervisor.start_child(Tarearbol.Application, mod, fun, args)
-
 end

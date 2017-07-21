@@ -27,8 +27,12 @@ defmodule Tarearbol.Application do
     do_kill(Enum.member?(Tarearbol.Application.children(), child), child)
   end
 
-  def task!(job) do
+  def task!(job) when is_function(job, 0) do
     Task.Supervisor.async_nolink(Tarearbol.Application, job)
+  end
+
+  def task!({mod, fun, params}) do
+    Task.Supervisor.async_nolink(Tarearbol.Application, mod, fun, params)
   end
 
   ##############################################################################
