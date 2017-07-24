@@ -1,6 +1,7 @@
 # Tarearbol
 
-**Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more**
+[![Build Status](https://travis-ci.org/am-kantox/tarearbol.svg?branch=master)](https://travis-ci.org/am-kantox/tarearbol)
+**Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more…**
 
 ## Installation
 
