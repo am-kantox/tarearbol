@@ -1,6 +1,6 @@
 defmodule Tarearbol.Mixfile do
   @moduledoc false
-  
+
   use Mix.Project
 
   @app :tarearbol
@@ -8,7 +8,7 @@ defmodule Tarearbol.Mixfile do
   def project do
     [
       app: @app,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.4",
       start_permanent: Mix.env == :prod,
       package: package(),
@@ -50,7 +50,7 @@ defmodule Tarearbol.Mixfile do
      files: ~w|config lib mix.exs README.md|,
      maintainers: ["Aleksei Matiushkin"],
      licenses: ["MIT"],
-     links: %{"GitHub" => "https://github.com/mudasobwa/#{@app}",
+     links: %{"GitHub" => "https://github.com/am-kantox/#{@app}",
               "Docs" => "https://hexdocs.pm/#{@app}"}]
   end
 end

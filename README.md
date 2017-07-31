@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.1"}
+    {:tarearbol, "~> 0.2"}
   ]
 end
 ```
@@ -110,10 +110,19 @@ Tarearbol.run_in fn -> IO.puts(42) end, 1_000 # 1 sec
 Tarearbol.spawn fn -> IO.puts(42) end # immediately
 ```
 
+### Task draining
+
+```elixir
+Tarearbol.run_in fn -> IO.inspect(42) end, 1_000 # 1 sec
+Tarearbol.run_in fn -> IO.inspect(:foo) end, 1_000 # 1 sec
+Tarearbol.drain
+42       # immediately, from `IO.inspect`
+:foo     # immediately, from `IO.inspect`
+[ok: 42, ok: :foo] # immediately, the returned value(s)
+```
+
 ### Increasing delay as in [`sidekiq`](https://github.com/mperham/sidekiq)
 
 **pending**
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/tarearbol](https://hexdocs.pm/tarearbol).
+Documentation can be found at [https://hexdocs.pm/tarearbol](https://hexdocs.pm/tarearbol).
