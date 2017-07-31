@@ -9,6 +9,7 @@ defmodule Tarearbol.Errand do
 
   def run_in(job, interval, opts \\ []) do
     Tarearbol.Application.task!(fn ->
+      Process.put(:job, {job, opts, Tarearbol.Utils.add_interval(interval)})
       Process.sleep(Tarearbol.Utils.interval(interval, value: 0))
       Tarearbol.Job.ensure(job, opts)
     end)

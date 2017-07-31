@@ -23,6 +23,15 @@ defmodule Tarearbol.Application do
     Task.Supervisor.children(Tarearbol.Application)
   end
 
+  def jobs do
+    Tarearbol.Application.children
+    |> Enum.map(&Process.info/1)
+    |> Enum.map(fn kw -> kw[:dictionary][:job] end)
+    |> Enum.filter(& &1)
+  end
+
+  def kill(), do: for child <- children(), do: kill(child)
+
   def kill(child) when is_pid(child) do
     do_kill(Enum.member?(Tarearbol.Application.children(), child), child)
   end
