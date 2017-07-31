@@ -25,8 +25,8 @@ defmodule Tarearbol.Application do
 
   def jobs do
     Tarearbol.Application.children
-    |> Enum.map(&Process.info/1)
-    |> Enum.map(fn kw -> kw[:dictionary][:job] end)
+    |> Enum.map(& Process.info(&1, :dictionary))
+    |> Enum.map(fn {:dictionary, dict} -> dict[:job] end)
     |> Enum.filter(& &1)
   end
 
