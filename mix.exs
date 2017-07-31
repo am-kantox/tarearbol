@@ -1,4 +1,6 @@
 defmodule Tarearbol.Mixfile do
+  @moduledoc false
+  
   use Mix.Project
 
   @app :tarearbol
@@ -6,7 +8,7 @@ defmodule Tarearbol.Mixfile do
   def project do
     [
       app: @app,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.4",
       start_permanent: Mix.env == :prod,
       package: package(),

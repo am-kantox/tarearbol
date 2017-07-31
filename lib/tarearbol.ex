@@ -17,4 +17,8 @@ defmodule Tarearbol do
 
   def ensure(job, opts \\ []), do: Tarearbol.Job.ensure(job, opts)
   def ensure!(job, opts \\ []), do: Tarearbol.Job.ensure!(job, opts)
+
+  def run_in(job, interval, opts \\ []), do: Tarearbol.Errand.run_in(job, interval, opts)
+  def run_at(job, at, opts \\ []), do: Tarearbol.Errand.run_at(job, at, opts)
+  def spawn(job, opts \\ []), do: Tarearbol.Errand.spawn(job, opts)
 end

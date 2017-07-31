@@ -103,6 +103,12 @@ for `:attempts` and `:delay` keys one might specify the following values:
 - `:medium` → `100`;
 - `:infinity` → `-1`, `:attempts` only.
 
+### Task spawning
+
+```elixir
+Tarearbol.run_in fn -> IO.puts(42) end, 1_000 # 1 sec
+Tarearbol.spawn fn -> IO.puts(42) end # immediately
+```
 
 ### Increasing delay as in [`sidekiq`](https://github.com/mperham/sidekiq)
 

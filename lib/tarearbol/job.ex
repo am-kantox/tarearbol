@@ -3,18 +3,17 @@ defmodule Tarearbol.Job do
 
   require Logger
 
-  @default_ensure_opts [
+  @default_opts [
     attempts: 0, delay: 0, raise: false, accept_not_ok: true,
     on_success: nil, on_retry: :debug, on_fail: :warn]
-  @ensure_opts Application.get_env(:tarearbol, :ensure_opts, @default_ensure_opts)
 
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
-    attempts = opts |> Keyword.get(:attempts, :infinity) |> interval()
+    attempts = opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
     opts = Keyword.delete(opts, :attempts)
-    do_retry(job, Keyword.merge(@ensure_opts, opts), attempts)
+    do_retry(job, Keyword.merge(opts(), opts), attempts)
   end
   def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     with {:ok, result} <- ensure(job, opts) do
@@ -23,6 +22,7 @@ defmodule Tarearbol.Job do
       data -> return_or_raise(job, data, true)
     end
   end
+  def opts, do: Application.get_env(:tarearbol, :job_options, @default_opts)
 
   ##############################################################################
 
@@ -39,19 +39,8 @@ defmodule Tarearbol.Job do
     end
   end
 
-  defp interval(input) do
-    case input do
-      msec when is_integer(msec) -> msec
-      sec when is_float(sec) -> round(1000 * sec)
-      :tiny -> 10
-      :medium -> 100
-      :infinity -> -1
-      _ -> 0
-    end
-  end
-
   defp delay(opts) do
-    opts[:delay] |> interval() |> abs() |> Process.sleep()
+    opts[:delay] |> Tarearbol.Utils.interval() |> abs() |> Process.sleep()
   end
 
   defp do_log(level, message), do: Logger.log level, message

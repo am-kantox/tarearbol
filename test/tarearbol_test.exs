@@ -1,4 +1,6 @@
 defmodule TarearbolTest do
+  @moduledoc false
+
   use ExUnit.Case
   doctest Tarearbol
 
@@ -44,5 +46,15 @@ defmodule TarearbolTest do
     result = Tarearbol.Job.ensure fn -> 42 end, attempts: 2, delay: 10, accept_not_ok: false
     assert {:error, %{outcome: outcome, job: _}} = result
     assert outcome == 42
+  end
+
+  test "run_in" do
+    Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100)
+    Process.sleep(50)
+    assert Enum.count(Tarearbol.Application.children) == 1
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == 2
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == 0
   end
 end
