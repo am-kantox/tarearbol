@@ -21,4 +21,11 @@ defmodule Tarearbol do
   def run_in(job, interval, opts \\ []), do: Tarearbol.Errand.run_in(job, interval, opts)
   def run_at(job, at, opts \\ []), do: Tarearbol.Errand.run_at(job, at, opts)
   def spawn(job, opts \\ []), do: Tarearbol.Errand.spawn(job, opts)
+
+  def drain() do
+    jobs = Tarearbol.Application.jobs
+    Tarearbol.Application.kill()
+
+    for {job, _opts, _at} <- jobs, do: Tarearbol.ensure(job)
+  end
 end

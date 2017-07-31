@@ -48,13 +48,20 @@ defmodule TarearbolTest do
     assert outcome == 42
   end
 
-  test "run_in" do
+  test "run_in and drain" do
     Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100)
     Process.sleep(50)
     assert Enum.count(Tarearbol.Application.children) == 1
     Process.sleep(100)
     assert Enum.count(Tarearbol.Application.children) == 2
     Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == 0
+
+    Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
+    Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
+    Process.sleep(50)
+    assert Enum.count(Tarearbol.Application.children) == 2
+    assert Tarearbol.drain == [ok: 42, ok: 42]
     assert Enum.count(Tarearbol.Application.children) == 0
   end
 end
