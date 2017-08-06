@@ -4,16 +4,16 @@ defmodule Tarearbol.Job do
   require Logger
 
   @default_opts [
-    attempts: 0, delay: 0, raise: false, accept_not_ok: true,
+    attempts: 0, delay: 0, timeout: 5_000, raise: false, accept_not_ok: true,
     on_success: nil, on_retry: :debug, on_fail: :warn]
 
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
+    opts = opts(opts)
     attempts = opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
-    opts = Keyword.delete(opts, :attempts)
-    do_retry(job, opts(opts), attempts)
+    do_retry(job, opts, attempts)
   end
 
   def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
@@ -26,8 +26,11 @@ defmodule Tarearbol.Job do
 
   @spec ensure_all([Task.t], Keyword.t) :: [{:ok, any} | {:exit, any} | {:error, any}]
   def ensure_all(list, opts \\ []) do
+    {stream_opts, task_opts} = Keyword.split(opts(opts), ~w|max_concurrency ordered on_timeout|a)
+    stream_opts = Keyword.merge(stream_opts, [timeout: task_opts[:timeout]])
+
     Tarearbol.Application
-    |> Task.Supervisor.async_stream(list, Tarearbol.Job, :ensure, [opts])
+    |> Task.Supervisor.async_stream(list, Tarearbol.Job, :ensure, [task_opts], stream_opts)
     |> Stream.map(fn
       {:ok, {:ok, whatever}} -> {:ok, whatever}       # Task succeeded
       {:ok, {:error, whatever}} -> {:error, whatever} # Task failed
@@ -75,7 +78,7 @@ defmodule Tarearbol.Job do
   end
 
   defp do_retry(job, opts, retries_left) do
-    case {opts[:accept_not_ok], job |> Tarearbol.Application.task!() |> Task.yield()} do
+    case {opts[:accept_not_ok], job |> Tarearbol.Application.task!() |> Task.yield(opts[:timeout])} do
       {_, {:exit, data}} ->
         delay(opts)
         retry_or_die(:on_raise, job, opts, data, retries_left)

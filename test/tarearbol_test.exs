@@ -65,6 +65,14 @@ defmodule TarearbolTest do
     assert Enum.count(Tarearbol.Application.children) == 0
   end
 
+  @tag :skip  
+  test "supports long running tasks" do
+    result = Tarearbol.Job.ensure fn -> Process.sleep(6_000) end, attempts: 1, timeout: 10_000
+    assert {:ok, :ok} = result
+    result = Tarearbol.Job.ensure fn -> Process.sleep(6_000) end, attempts: 1
+    assert {:error, %{outcome: nil, job: _}} = result
+  end
+
   test "many async stream ensured" do
     res = 1..20
           |> Enum.map(fn i ->
@@ -81,7 +89,7 @@ defmodule TarearbolTest do
           |> Enum.map(fn i ->
             fn ->
               tos = Enum.random(i..100)
-              if tos > 50, do: raise "YO"
+              if tos > 80, do: raise "YO"
               Process.sleep(tos)
             end
           end)
@@ -100,6 +108,18 @@ defmodule TarearbolTest do
           |> Enum.map(fn {result, _} -> result end)
 
     assert res == List.duplicate(:error, 20)
+  end
+
+  @tag :skip  
+  test "many async long-running stream ensured" do
+    res = 1..2
+          |> Enum.map(fn _ ->
+            fn -> Process.sleep(6_000) end
+          end)
+          |> Tarearbol.Job.ensure_all(attempts: 1, timeout: 10_000)
+          |> Enum.map(fn {result, _} -> result end)
+
+    assert res == List.duplicate(:ok, 2)
   end
 
   # test "many async stream ensured with errors raised" do

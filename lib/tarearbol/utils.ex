@@ -3,6 +3,8 @@ defmodule Tarearbol.Utils do
 
   def interval(input, opts \\ []) do
     case input do
+      0 -> -1
+      0.0 -> -1
       msec when is_integer(msec) -> msec
       sec when is_float(sec) -> round(1_000 * sec)
       :tiny -> 10
@@ -23,14 +25,14 @@ defmodule Tarearbol.Utils do
   def cron_to_time(at) when is_binary(at), do: raise "NYI: #{inspect at}"
 
   # defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do
-  defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do
-    every = String.to_integer(rest)
-    "*"
-    |> decronify(min, max)
-    |> Enum.with_index
-    |> Enum.filter(fn {_, idx} -> Integer.mod(idx, every) == 0 end)
-    |> Enum.map(fn {value, _} -> value end)
-  end
-  defp decronify("*", min, max), do: Enum.to_list(min..max)
+  # defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do
+  #   every = String.to_integer(rest)
+  #   "*"
+  #   |> decronify(min, max)
+  #   |> Enum.with_index
+  #   |> Enum.filter(fn {_, idx} -> Integer.mod(idx, every) == 0 end)
+  #   |> Enum.map(fn {value, _} -> value end)
+  # end
+  # defp decronify("*", min, max), do: Enum.to_list(min..max)
 
 end
