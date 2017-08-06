@@ -11,11 +11,9 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
-  @doc """
-  Hello world.
-  """
-
+  @spec ensure((Function.t | {Module.t, Atom.t, List.t}), List.t) :: ({:error, any} | {:ok, any})
   def ensure(job, opts \\ []), do: Tarearbol.Job.ensure(job, opts)
+  @spec ensure!((Function.t | {Module.t, Atom.t, List.t}), List.t) :: ({:error, any} | {:ok, any})
   def ensure!(job, opts \\ []), do: Tarearbol.Job.ensure!(job, opts)
 
   def ensure_all_streamed(jobs, opts \\ []), do: Tarearbol.Jobs.ensure_all_streamed(jobs, opts)

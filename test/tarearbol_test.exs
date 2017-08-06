@@ -61,7 +61,7 @@ defmodule TarearbolTest do
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
     Process.sleep(50)
-    assert Enum.count(Tarearbol.Application.children) == 2
+    assert Enum.count(Tarearbol.Application.children) == count + 2
     assert Tarearbol.drain == [ok: 42, ok: 42]
     assert Enum.count(Tarearbol.Application.children) == 0
   end

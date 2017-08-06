@@ -8,16 +8,13 @@ defmodule Tarearbol.Job do
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
-    opts = Utils.opts(opts)
-    attempts = opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
-    do_retry(job, opts, attempts)
+    do_retry(job, Utils.opts(opts), attempts(opts))
   end
 
   def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
-    with {:ok, result} <- ensure(job, opts) do
-      result
-    else
-      data -> return_or_raise(job, data, Utils.opts(opts)[:raise])
+    case ensure(job, opts) do
+      {:ok, result} -> result
+      {:error, data} -> return_or_raise(job, data, true) # raise
     end
   end
 
@@ -37,10 +34,16 @@ defmodule Tarearbol.Job do
   end
 
   defp delay(opts) do
-    opts[:delay] |> Tarearbol.Utils.interval() |> abs() |> Process.sleep()
+    opts |> Keyword.get(:delay, :infinity) |> Tarearbol.Utils.interval() |> abs() |> Process.sleep()
+  end
+
+  defp attempts(opts) do
+    opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
   end
 
   defp do_log(level, message), do: Logger.log level, message
+
+  #############################################################################
 
   defp return_or_raise(job, data, true),
     do: raise Tarearbol.TaskFailedError, outcome: data, job: job
@@ -76,6 +79,9 @@ defmodule Tarearbol.Job do
       {false, {:ok, data}} ->
         delay(opts)
         retry_or_die(:not_ok, job, opts, data, retries_left)
+      {_, nil} ->
+        delay(opts)
+        retry_or_die(:timeout, job, opts, nil, retries_left)
       {_, that_can_not_happen_but} ->
         delay(opts)
         retry_or_die(:unknown, job, opts, that_can_not_happen_but, retries_left)
