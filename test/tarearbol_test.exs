@@ -112,12 +112,14 @@ defmodule TarearbolTest do
 
   @tag :skip  
   test "many async long-running stream ensured" do
-    res = 1..2
+    IO.inspect DateTime.utc_now, label: "⇒"
+    res = 1..6
           |> Enum.map(fn _ ->
             fn -> Process.sleep(6_000) end
           end)
-          |> Tarearbol.Job.ensure_all(attempts: 1, timeout: 10_000)
+          |> Tarearbol.Job.ensure_all(attempts: 1, max_concurrency: 8, timeout: 10_000)
           |> Enum.map(fn {result, _} -> result end)
+    IO.inspect DateTime.utc_now, label: "⇐"
 
     assert res == List.duplicate(:ok, 2)
   end
