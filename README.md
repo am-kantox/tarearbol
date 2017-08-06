@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.2"}
+    {:tarearbol, "~> 0.3"}
   ]
 end
 ```
@@ -29,6 +29,18 @@ end
 
 # some bad-case logging
 {:ok, 42}
+```
+
+### Async execution of many tasks with retries
+
+```elixir
+res = 1..20
+      |> Enum.map(fn i ->
+        fn -> Process.sleep(Enum.random(1..i)); i end
+      end)
+      |> Tarearbol.Job.ensure_all(attempts: 1)
+
+[{:ok, 1}, {:ok, 2}, ..., {:ok, 20}]
 ```
 
 ### Limited amount of retries

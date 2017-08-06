@@ -13,16 +13,31 @@ defmodule Tarearbol.Job do
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     attempts = opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
     opts = Keyword.delete(opts, :attempts)
-    do_retry(job, Keyword.merge(opts(), opts), attempts)
+    do_retry(job, opts(opts), attempts)
   end
+
   def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     with {:ok, result} <- ensure(job, opts) do
       result
     else
-      data -> return_or_raise(job, data, true)
+      data -> return_or_raise(job, data, opts(opts)[:raise])
     end
   end
-  def opts, do: Application.get_env(:tarearbol, :job_options, @default_opts)
+
+  @spec ensure_all([Task.t], Keyword.t) :: [{:ok, any} | {:exit, any} | {:error, any}]
+  def ensure_all(list, opts \\ []) do
+    Tarearbol.Application
+    |> Task.Supervisor.async_stream(list, Tarearbol.Job, :ensure, [opts])
+    |> Stream.map(fn
+      {:ok, {:ok, whatever}} -> {:ok, whatever}       # Task succeeded
+      {:ok, {:error, whatever}} -> {:error, whatever} # Task failed
+      whatever -> whatever                            # Task failed on OTP level
+    end)
+    |> Enum.to_list
+  end
+
+  def opts(opts),
+    do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
   ##############################################################################
 

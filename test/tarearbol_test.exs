@@ -64,4 +64,51 @@ defmodule TarearbolTest do
     assert Tarearbol.drain == [ok: 42, ok: 42]
     assert Enum.count(Tarearbol.Application.children) == 0
   end
+
+  test "many async stream ensured" do
+    res = 1..20
+          |> Enum.map(fn i ->
+            fn -> Process.sleep(Enum.random(1..i)) end
+          end)
+          |> Tarearbol.Job.ensure_all(attempts: 1)
+          |> Enum.map(fn {result, _} -> result end)
+
+    assert res == List.duplicate(:ok, 20)
+  end
+
+  test "many async stream ensured with raises" do
+    res = 1..20
+          |> Enum.map(fn i ->
+            fn ->
+              tos = Enum.random(i..100)
+              if tos > 50, do: raise "YO"
+              Process.sleep(tos)
+            end
+          end)
+          |> Tarearbol.Job.ensure_all()
+          |> Enum.map(fn {result, _} -> result end)
+
+    assert res == List.duplicate(:ok, 20)
+  end
+
+  test "many async stream ensured with errors" do
+    res = 1..20
+          |> Enum.map(fn _ ->
+            fn -> raise "¡!" end
+          end)
+          |> Tarearbol.Job.ensure_all(attempts: 1, raise: false)
+          |> Enum.map(fn {result, _} -> result end)
+
+    assert res == List.duplicate(:error, 20)
+  end
+
+  # test "many async stream ensured with errors raised" do
+  #   assert_raise(Tarearbol.TaskFailedError, fn ->
+  #     1..1
+  #     |> Enum.map(fn _ ->
+  #       fn -> raise "¡!" end
+  #     end)
+  #     |> Tarearbol.Job.ensure_all(attempts: 1, raise: true)
+  #   end)
+  # end
 end
