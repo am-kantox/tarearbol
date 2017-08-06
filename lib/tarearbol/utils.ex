@@ -1,6 +1,6 @@
 defmodule Tarearbol.Utils do
   @moduledoc false
-
+  
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
@@ -21,6 +21,25 @@ defmodule Tarearbol.Utils do
     (((to || DateTime.utc_now) |> DateTime.to_unix(:milliseconds)) + interval(input))
     |> DateTime.from_unix!(:milliseconds)
   end
+
+  #############################################################################
+
+  @default_opts [
+    attempts: 0, delay: 0, timeout: 5_000, raise: false, accept_not_ok: true,
+    on_success: nil, on_retry: :debug, on_fail: :warn]
+  
+  def opts(opts),
+    do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
+
+  def extract_opts(opts, name, default \\ nil)
+  def extract_opts(opts, name, default) when is_atom(name) do
+    opts = opts(opts)
+    {Keyword.get(opts, name, default), Keyword.delete(opts, name)}
+  end
+  def extract_opts(opts, names, default) when is_list(names) and is_nil(default),
+    do: Keyword.split(opts(opts), names)
+
+  #############################################################################
 
   def cron_to_time(at) when is_binary(at), do: raise "NYI: #{inspect at}"
 

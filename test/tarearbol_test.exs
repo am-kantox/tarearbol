@@ -49,13 +49,14 @@ defmodule TarearbolTest do
   end
 
   test "run_in and drain" do
+    count = Enum.count(Tarearbol.Application.children)
     Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100)
     Process.sleep(50)
-    assert Enum.count(Tarearbol.Application.children) == 1
+    assert Enum.count(Tarearbol.Application.children) == count + 1
     Process.sleep(100)
-    assert Enum.count(Tarearbol.Application.children) == 2
+    assert Enum.count(Tarearbol.Application.children) == count + 2
     Process.sleep(100)
-    assert Enum.count(Tarearbol.Application.children) == 0
+    assert Enum.count(Tarearbol.Application.children) == count
 
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
@@ -78,7 +79,7 @@ defmodule TarearbolTest do
           |> Enum.map(fn i ->
             fn -> Process.sleep(Enum.random(1..i)) end
           end)
-          |> Tarearbol.Job.ensure_all(attempts: 1)
+          |> Tarearbol.ensure_all(attempts: 1)
           |> Enum.map(fn {result, _} -> result end)
 
     assert res == List.duplicate(:ok, 20)
@@ -93,7 +94,7 @@ defmodule TarearbolTest do
               Process.sleep(tos)
             end
           end)
-          |> Tarearbol.Job.ensure_all()
+          |> Tarearbol.ensure_all()
           |> Enum.map(fn {result, _} -> result end)
 
     assert res == List.duplicate(:ok, 20)
@@ -104,7 +105,7 @@ defmodule TarearbolTest do
           |> Enum.map(fn _ ->
             fn -> raise "¡!" end
           end)
-          |> Tarearbol.Job.ensure_all(attempts: 1, raise: false)
+          |> Tarearbol.ensure_all(attempts: 1, raise: false)
           |> Enum.map(fn {result, _} -> result end)
 
     assert res == List.duplicate(:error, 20)
@@ -117,11 +118,11 @@ defmodule TarearbolTest do
           |> Enum.map(fn _ ->
             fn -> Process.sleep(6_000) end
           end)
-          |> Tarearbol.Job.ensure_all(attempts: 1, max_concurrency: 8, timeout: 10_000)
+          |> Tarearbol.ensure_all(attempts: 1, max_concurrency: 8, timeout: 10_000)
           |> Enum.map(fn {result, _} -> result end)
     IO.inspect DateTime.utc_now, label: "⇐"
 
-    assert res == List.duplicate(:ok, 2)
+    assert res == List.duplicate(:ok, 6)
   end
 
   # test "many async stream ensured with errors raised" do
@@ -130,7 +131,7 @@ defmodule TarearbolTest do
   #     |> Enum.map(fn _ ->
   #       fn -> raise "¡!" end
   #     end)
-  #     |> Tarearbol.Job.ensure_all(attempts: 1, raise: true)
+  #     |> Tarearbol.ensure_all(attempts: 1, raise: true)
   #   end)
   # end
 end
