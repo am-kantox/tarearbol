@@ -100,6 +100,11 @@ defmodule TarearbolTest do
     assert res == List.duplicate(:ok, 20)
   end
 
+  test "ensure all does not hang up" do
+    res = Tarearbol.ensure_all([])
+    assert res == []
+  end
+
   test "many async stream ensured with errors" do
     res = 1..20
           |> Enum.map(fn _ ->
