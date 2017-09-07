@@ -70,6 +70,9 @@ defmodule Tarearbol.Job do
       {_, {:ok, {:error, data}}} ->
         delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
+      {_, {:ok, :ok}} ->
+        if is_function(opts[:on_success], 1), do: opts[:on_success].(:ok)
+        {:ok, :ok}
       {_, {:ok, {:ok, data}}} ->
         if is_function(opts[:on_success], 1), do: opts[:on_success].(data)
         {:ok, data}

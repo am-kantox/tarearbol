@@ -8,6 +8,13 @@ defmodule TarearbolTest do
     assert {:error, :not_found} == Tarearbol.Application.kill(self())
   end
 
+  test "supports :ok and {:ok, _} as successful returns" do
+    assert [{:ok, :ok}, {:ok, 42}] ==
+      Enum.map([:ok, {:ok, 42}], fn e ->
+        Tarearbol.Job.ensure fn -> e end, accept_not_ok: false, attempts: 1
+      end)
+  end
+
   test "supports infinite re-execution until not raised" do
     assert {:ok, 42} ==
       Tarearbol.Job.ensure fn ->
