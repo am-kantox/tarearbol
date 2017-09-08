@@ -13,6 +13,11 @@ defmodule TarearbolTest do
       Enum.map([:ok, {:ok, 42}], fn e ->
         Tarearbol.Job.ensure fn -> e end, accept_not_ok: false, attempts: 1
       end)
+
+    assert [{:ok, :ok}, {:ok, 42}] == 
+      [:ok, {:ok, 42}]
+      |> Enum.map(fn result -> fn -> result end end)
+      |> Tarearbol.ensure_all(accept_not_ok: false, attempts: 1)
   end
 
   test "supports infinite re-execution until not raised" do
