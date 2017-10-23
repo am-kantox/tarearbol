@@ -9,7 +9,7 @@ defmodule Tarearbol.Mixfile do
     [
       app: @app,
       version: "0.4.0",
-      elixir: "~> 1.4",
+      elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
       package: package(),
       description: description(),
