@@ -29,7 +29,8 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:credo, "~> 0.8", only: :dev},
-      {:ex_doc, "~> 0.11", only: :dev}
+      {:ex_doc, "~> 0.11", only: :dev},
+      {:mock, "~> 0.2", only: :test}
     ]
   end
 

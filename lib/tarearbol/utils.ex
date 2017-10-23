@@ -1,12 +1,12 @@
 defmodule Tarearbol.Utils do
   @moduledoc false
-  
+
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
       0.0 -> -1
-      msec when is_integer(msec) -> msec
-      sec when is_float(sec) -> round(1_000 * sec)
+      msec when is_integer(msec) and msec > 0 -> msec
+      sec when is_float(sec) and sec > 0 -> round(1_000 * sec)
       :tiny -> 10
       :medium -> 100
       :regular -> 1_000
@@ -27,7 +27,7 @@ defmodule Tarearbol.Utils do
   @default_opts [
     attempts: 0, delay: 0, timeout: 5_000, raise: false, accept_not_ok: true,
     on_success: nil, on_retry: :debug, on_fail: :warn]
-  
+
   def opts(opts),
     do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
