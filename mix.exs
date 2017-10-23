@@ -8,7 +8,7 @@ defmodule Tarearbol.Mixfile do
   def project do
     [
       app: @app,
-      version: "0.3.3",
+      version: "0.4.0",
       elixir: "~> 1.4",
       start_permanent: Mix.env == :prod,
       package: package(),
@@ -29,7 +29,8 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:credo, "~> 0.8", only: :dev},
-      {:ex_doc, "~> 0.11", only: :dev}
+      {:ex_doc, "~> 0.11", only: :dev},
+      {:mock, "~> 0.2", only: :test}
     ]
   end
 

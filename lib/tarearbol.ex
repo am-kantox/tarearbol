@@ -25,6 +25,7 @@ defmodule Tarearbol do
   def run_in(job, interval, opts \\ []), do: Tarearbol.Errand.run_in(job, interval, opts)
   @spec run_at((Function.t | {Module.t, Atom.t, List.t}), (DateTime.t | String.t), List.t) :: Task.t
   def run_at(job, at, opts \\ []), do: Tarearbol.Errand.run_at(job, at, opts)
+  @spec spawn((Function.t | {Module.t, Atom.t, List.t}), List.t) :: Task.t
   def spawn(job, opts \\ []), do: Tarearbol.Errand.spawn(job, opts)
 
   @spec drain() :: [{:error, any} | {:ok, any}]

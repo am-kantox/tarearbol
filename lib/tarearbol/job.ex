@@ -20,16 +20,35 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
+  defp on_callback(value, data, log_prefix \\ "JOB") do
+    case value do
+      nil -> :ok
+      level when is_atom(level) ->
+        do_log(level, "[#{log_prefix}] #{inspect data}")
+      fun when is_function(fun, 0) -> fun.()
+      fun when is_function(fun, 1) -> fun.(data)
+      {mod, fun} ->
+        arities = mod
+                  |> apply(:__info__, [:functions])
+                  |> Keyword.get_values(fun)
+        params = cond do
+                    Enum.member?(arities, 1) -> [data]
+                    Enum.member?(arities, 0) -> []
+                    true -> nil
+                  end
+        if params, do: apply(mod, fun, params)
+      _ -> :ok
+    end
+  end
+
+  defmacrop on_success(value, data) do
+    quote bind_quoted: [value: value, data: data] do
+      on_callback(value, data)
+    end
+  end
   defmacrop on_problem(value, data, log_prefix) do
-    quote do
-      case unquote(value) do
-        nil -> :ok
-        level when is_atom(level) ->
-          do_log(level, "[#{unquote(log_prefix)}] #{inspect unquote(data)}")
-        fun when is_function(fun, 0) -> fun.()
-        fun when is_function(fun, 1) -> fun.(unquote(data))
-        _ -> :ok
-      end
+    quote bind_quoted: [value: value, data: data, log_prefix: log_prefix] do
+      on_callback(value, data, log_prefix)
     end
   end
 
@@ -71,13 +90,13 @@ defmodule Tarearbol.Job do
         delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
       {_, {:ok, :ok}} ->
-        if is_function(opts[:on_success], 1), do: opts[:on_success].(:ok)
+        on_success(opts[:on_success], :ok)
         {:ok, :ok}
       {_, {:ok, {:ok, data}}} ->
-        if is_function(opts[:on_success], 1), do: opts[:on_success].(data)
+        on_success(opts[:on_success], data)
         {:ok, data}
       {true, {:ok, data}} ->
-        if is_function(opts[:on_success], 1), do: opts[:on_success].(data)
+        on_success(opts[:on_success], data)
         {:ok, data}
       {false, {:ok, data}} ->
         delay(opts)

@@ -14,7 +14,7 @@ defmodule TarearbolTest do
         Tarearbol.Job.ensure fn -> e end, accept_not_ok: false, attempts: 1
       end)
 
-    assert [{:ok, :ok}, {:ok, 42}] == 
+    assert [{:ok, :ok}, {:ok, 42}] ==
       [:ok, {:ok, 42}]
       |> Enum.map(fn result -> fn -> result end end)
       |> Tarearbol.ensure_all(accept_not_ok: false, attempts: 1)
@@ -60,7 +60,7 @@ defmodule TarearbolTest do
     assert outcome == 42
   end
 
-  test "run_in and drain" do
+  test "#run_in" do
     count = Enum.count(Tarearbol.Application.children)
     Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100)
     Process.sleep(50)
@@ -69,7 +69,37 @@ defmodule TarearbolTest do
     assert Enum.count(Tarearbol.Application.children) == count + 2
     Process.sleep(100)
     assert Enum.count(Tarearbol.Application.children) == count
+  end
 
+  @tag :skip
+  test "#run_in repeatedly" do
+    count = Enum.count(Tarearbol.Application.children)
+    Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100, repeatedly: true)
+    Process.sleep(50)
+    assert Enum.count(Tarearbol.Application.children) == count + 1
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == count + 2
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == count + 2
+  end
+
+  test "#run_at" do
+    count = Enum.count(Tarearbol.Application.children)
+    run_at = DateTime.utc_now
+             |> DateTime.to_unix(:millisecond)
+             |> Kernel.+(100)
+             |> DateTime.from_unix!(:millisecond)
+    Tarearbol.Errand.run_at(fn -> Process.sleep(100) end, run_at)
+    Process.sleep(50)
+    assert Enum.count(Tarearbol.Application.children) == count + 1
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == count + 2
+    Process.sleep(100)
+    assert Enum.count(Tarearbol.Application.children) == count
+  end
+
+  test "#drain" do
+    count = Enum.count(Tarearbol.Application.children)
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
     Tarearbol.Errand.run_in(fn -> {:ok, 42} end, 1_000)
     Process.sleep(50)
@@ -78,7 +108,7 @@ defmodule TarearbolTest do
     assert Enum.count(Tarearbol.Application.children) == 0
   end
 
-  @tag :skip  
+  @tag :skip
   test "supports long running tasks" do
     result = Tarearbol.Job.ensure fn -> Process.sleep(6_000) end, attempts: 1, timeout: 10_000
     assert {:ok, :ok} = result
@@ -128,7 +158,7 @@ defmodule TarearbolTest do
     assert res == List.duplicate(:error, 20)
   end
 
-  @tag :skip  
+  @tag :skip
   test "many async long-running stream ensured" do
     IO.inspect DateTime.utc_now, label: "⇒"
     res = 1..6
