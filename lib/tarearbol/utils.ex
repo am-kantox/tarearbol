@@ -1,6 +1,25 @@
 defmodule Tarearbol.Utils do
-  @moduledoc false
+  @moduledoc """
+  Set of utilities used in `Tarearbol`. It currently includes human-to-machine
+    interval conversions and options extractor.
+  """
 
+  @type interval :: (Integer.t | Float.t |
+                     :none | :tiny | :medium | :regular |
+                     :timeout | :infinity | :random)
+
+  @doc """
+  Converts a human representation of time interval to the one
+    understandable by a computer. The conversion rules are:
+
+  - `integer` → amount to be used as is (milliseconds for `delay`, number for attempts);
+  - `float` → amount of thousands, rounded (seconds for `delay`, thousands for attempts);
+  - `:none` → `0`;
+  - `:tiny` → `10`;
+  - `:medium` → `100`;
+  - `:infinity` → `-1`, `:attempts` only.
+  """
+  @spec interval(Interval.t, List.t) :: Integer.t
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
@@ -17,8 +36,17 @@ defmodule Tarearbol.Utils do
     end
   end
 
-  def add_interval(input, to \\ nil) do
-    (((to || DateTime.utc_now) |> DateTime.to_unix(:milliseconds)) + interval(input))
+  @doc """
+  Adds an interval to the given `DateTime` instance (or to
+    `DateTime.utc_now` if none given, returning the `DateTime` instance.
+  """
+  @spec add_interval(Interval.t, DateTime.t | nil) :: DateTime.t
+  def add_interval(input, to \\ nil)
+  def add_interval(input, nil), do: add_interval(input, DateTime.utc_now)
+  def add_interval(input, %DateTime{} = to) do
+    to
+    |> DateTime.to_unix(:milliseconds)
+    |> Kernel.+(interval(input))
     |> DateTime.from_unix!(:milliseconds)
   end
 
@@ -28,9 +56,13 @@ defmodule Tarearbol.Utils do
     attempts: 0, delay: 0, timeout: 5_000, raise: false, accept_not_ok: true,
     on_success: nil, on_retry: :debug, on_fail: :warn]
 
+  @doc false
+  @spec opts(Keyword.t) :: Keyword.t
   def opts(opts),
     do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
+  @doc false
+  @spec extract_opts(Keyword.t, Atom.t | List.t, any) :: Keyword.t
   def extract_opts(opts, name, default \\ nil)
   def extract_opts(opts, name, default) when is_atom(name) do
     opts = opts(opts)

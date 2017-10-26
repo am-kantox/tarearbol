@@ -80,7 +80,7 @@ Tarearbol.ensure fn ->
   unless Enum.random(1..100) == 42, do: raise "Incorrect answer"
   {:ok, 42}
 end, on_success: fn data -> IO.inspect(data, label: "★") end,
-     on_retry: fn data -> IO.inspect(data, label: "☆") end  
+     on_retry: fn data -> IO.inspect(data, label: "☆") end
 
 # some slow bad-case logging
 # ⇓⇓⇓⇓ one or more of ⇓⇓⇓⇓
@@ -132,6 +132,12 @@ Tarearbol.drain
 :foo     # immediately, from `IO.inspect`
 [ok: 42, ok: :foo] # immediately, the returned value(s)
 ```
+
+### Changelog
+
+- `0.4.2` [**to do**] using `DETS` to store `run_at` jobs;
+- `0.4.1` `run_at` now repeats itself properly;
+- `0.4.0` allow `run_at` recurrent tasks.
 
 ### Increasing delay as in [`sidekiq`](https://github.com/mperham/sidekiq)
 

@@ -33,7 +33,9 @@ defmodule Tarearbol.Application do
   def kill(), do: for child <- children(), do: kill(child)
 
   def kill(child) when is_pid(child) do
-    do_kill(Enum.member?(Tarearbol.Application.children(), child), child)
+    Tarearbol.Application.children()
+    |> Enum.member?(child)
+    |> do_kill(child)
   end
 
   def task!(job) when is_function(job, 0) do
