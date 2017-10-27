@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.3"}
+    {:tarearbol, "~> 0.4"}
   ]
 end
 ```
