@@ -41,16 +41,8 @@ defmodule Tarearbol.Job do
     end
   end
 
-  defp on_success(value, data) do
-    quote bind_quoted: [value: value, data: data] do
-      on_callback(value, data)
-    end
-  end
-  defp on_problem(value, data, log_prefix) do
-    quote bind_quoted: [value: value, data: data, log_prefix: log_prefix] do
-      on_callback(value, data, log_prefix)
-    end
-  end
+  defp on_success(value, data), do: on_callback(value, data)
+  defp on_problem(value, data, log_prefix), do: on_callback(value, data, log_prefix)
 
   defp delay(opts) do
     opts |> Keyword.get(:delay, :infinity) |> Tarearbol.Utils.interval() |> abs() |> Process.sleep()
