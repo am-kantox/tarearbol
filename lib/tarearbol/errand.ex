@@ -16,13 +16,19 @@ defmodule Tarearbol.Errand do
                Tarearbol.Utils.interval, Keyword.t) :: Task.t
   def run_in(job, interval, opts \\ opts()) do
     Tarearbol.Application.task!(fn ->
+      waiting_time = Tarearbol.Utils.interval(interval, value: 0)
+
       Process.put(:job, {job, opts, Tarearbol.Utils.add_interval(interval)})
-      Process.sleep(Tarearbol.Utils.interval(interval, value: 0))
-      Tarearbol.Job.ensure(job, opts)
+      Process.sleep(waiting_time)
+      result = Tarearbol.Job.ensure(job, opts)
       Process.delete(:job)
 
-      if opts[:repeatedly], do: run_in(job, interval, opts)
-      if opts[:next_run], do: run_at(job, opts[:next_run], opts)
+      cond do
+        opts[:sidekiq] -> run_in(job, sidekiq_interval(waiting_time), opts)
+        opts[:next_run] -> run_at(job, opts[:next_run], opts)
+        opts[:repeatedly] -> run_in(job, interval, opts)
+        true -> result
+      end
     end)
   end
 
@@ -62,4 +68,10 @@ defmodule Tarearbol.Errand do
 
   @spec run_in_opts(Keyword.t) :: Keyword.t
   defp run_in_opts(opts), do: Keyword.delete(opts, :repeatedly)
+
+  @mike_perham_const 1.15647559215 # to perform 25 times in 21 day
+
+  @spec sidekiq_interval(Integer.t) :: Integer.t
+  defp sidekiq_interval(interval),
+    do: @mike_perham_const * interval * :math.atan(:math.log(interval))
 end

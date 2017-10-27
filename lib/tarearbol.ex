@@ -42,7 +42,7 @@ defmodule Tarearbol do
   @doc "Spawns an ensured job asynchronously, passing all options given."
   @spec spawn_ensured((Function.t | {Module.t, Atom.t, List.t}), Keyword.t) :: Task.t
   def spawn_ensured(job, opts),
-    do: Tarearbol.Application.task!(fn -> Tarearbol.ensure(job, opts) end)
+    do: Tarearbol.Errand.run_in(job, :none, Keyword.merge(opts, [sidekiq: true, on_retry: :warn]))
 
   @doc "Wrapper for [`Task.Supervisor.async_stream/4`](https://hexdocs.pm/elixir/Task.Supervisor.html#async_stream/4)."
   @spec ensure_all_streamed([Function.t | {Module.t, Atom.t, List.t}], Keyword.t) :: [Stream.t]
