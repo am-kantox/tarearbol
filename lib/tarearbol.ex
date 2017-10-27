@@ -11,7 +11,8 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
-  @doc """Ensures the task to be completed; restarts it when necessary.
+  @doc """
+  Ensures the task to be completed; restarts it when necessary.
 
   Possible options:
   - `attempts` [_default:_ `:infinity`] Might be any of `@Tarearbol.Utils.interval`
