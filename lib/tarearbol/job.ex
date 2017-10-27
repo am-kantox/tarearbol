@@ -41,12 +41,12 @@ defmodule Tarearbol.Job do
     end
   end
 
-  defmacrop on_success(value, data) do
+  defp on_success(value, data) do
     quote bind_quoted: [value: value, data: data] do
       on_callback(value, data)
     end
   end
-  defmacrop on_problem(value, data, log_prefix) do
+  defp on_problem(value, data, log_prefix) do
     quote bind_quoted: [value: value, data: data, log_prefix: log_prefix] do
       on_callback(value, data, log_prefix)
     end
