@@ -73,6 +73,7 @@ defmodule Tarearbol.Utils do
 
   #############################################################################
 
+  @doc false
   def cron_to_time(at) when is_binary(at), do: raise "NYI: #{inspect at}"
 
   # defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do

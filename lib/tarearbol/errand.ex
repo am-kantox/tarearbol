@@ -1,7 +1,5 @@
 defmodule Tarearbol.Errand do
-  @moduledoc """
-  Handy set of cron-like functions to run tasks at the specified date/time.
-  """
+  @moduledoc false
 
   require Logger
 
