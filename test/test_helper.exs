@@ -11,7 +11,10 @@ defmodule Tarearbol.TestTask do
 end
 
 defmodule Tarearbol.Runner do
-  def yo!(args \\ []), do: {:ok, args}
+  def yo!(args) do
+    with pid <- args, do: send pid, :yo
+    {:ok, args}
+  end
 end
 # ExUnit.start()
 ExUnit.start(exclude: :skip)

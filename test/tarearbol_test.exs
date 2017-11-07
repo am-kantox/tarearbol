@@ -67,20 +67,26 @@ defmodule TarearbolTest do
   test "#run_in" do
     # active children
     count = Enum.count(Tarearbol.Application.children)
-    Tarearbol.Errand.run_in(fn -> Process.sleep(100) end, 100)
+    pid = self()
+    Tarearbol.Errand.run_in(fn ->
+      send(pid, :yo)
+      Process.sleep(100)
+    end, 100)
     Process.sleep(50)
     assert Enum.count(Tarearbol.Application.children) == count + 1
     Process.sleep(100)
     assert Enum.count(Tarearbol.Application.children) == count + 2
     Process.sleep(100)
+    assert_received :yo
     assert Enum.count(Tarearbol.Application.children) == count
 
     # dets
     count = Enum.count(Tarearbol.Cron.tasks)
-    Tarearbol.Errand.run_in({Tarearbol.Runner, :yo!, [42]}, 100)
+    Tarearbol.Errand.run_in({Tarearbol.Runner, :yo!, [self()]}, 100)
     Process.sleep(50)
     assert Enum.count(Tarearbol.Cron.tasks) == count + 1
     Process.sleep(100)
+    assert_received :yo
     assert Enum.count(Tarearbol.Cron.tasks) == count
   end
 
