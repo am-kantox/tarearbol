@@ -19,8 +19,10 @@ defmodule Tarearbol.Errand do
       waiting_time = Tarearbol.Utils.interval(interval, value: 0)
 
       Process.put(:job, {job, opts, Tarearbol.Utils.add_interval(interval)})
+      Tarearbol.Cron.put_task({interval_to_datetime(waiting_time), job})
       Process.sleep(waiting_time)
       result = Tarearbol.Job.ensure(job, opts)
+      Tarearbol.Cron.del_task({interval_to_datetime(waiting_time), job})
       Process.delete(:job)
 
       cond do
@@ -74,4 +76,11 @@ defmodule Tarearbol.Errand do
   @spec sidekiq_interval(Integer.t) :: Integer.t
   defp sidekiq_interval(interval),
     do: @mike_perham_const * interval * :math.atan(:math.log(interval))
+
+  defp interval_to_datetime(msecs) do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:millisecond)
+    |> Kernel.+(msecs)
+    |> DateTime.from_unix!(:millisecond)
+  end
 end

@@ -9,5 +9,9 @@ defmodule Tarearbol.TestTask do
     if Enum.random([1, 2]) == 1, do: 42, else: {:error, 42}
   end
 end
+
+defmodule Tarearbol.Runner do
+  def yo!(args \\ []), do: {:ok, args}
+end
 # ExUnit.start()
 ExUnit.start(exclude: :skip)

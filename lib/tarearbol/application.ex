@@ -9,8 +9,8 @@ defmodule Tarearbol.Application do
     import Supervisor.Spec, warn: false
     # List all child processes to be supervised
     children = [
-      supervisor(Task.Supervisor, [[name: Tarearbol.Application]])
-      # {Tarearbol.Worker, arg},
+      supervisor(Task.Supervisor, [[name: Tarearbol.Application]]),
+      worker(Tarearbol.Cron, [])
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
