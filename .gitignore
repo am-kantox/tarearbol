@@ -20,4 +20,4 @@ erl_crash.dump
 *.ez
 
 # DETS (used for tests)
-/tasks
+/tarearbol

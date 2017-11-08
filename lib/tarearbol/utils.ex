@@ -1,8 +1,8 @@
 defmodule Tarearbol.Utils do
-  @moduledoc """
-  Set of utilities used in `Tarearbol`. It currently includes human-to-machine
-    interval conversions and options extractor.
-  """
+  @moduledoc false
+
+  # Set of utilities used in `Tarearbol`. It currently includes human-to-machine
+  #   interval conversions and options extractor.
 
   @type interval :: (Integer.t | Float.t |
                      :none | :tiny | :medium | :regular |

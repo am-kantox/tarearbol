@@ -19,6 +19,8 @@ defmodule Tarearbol.Application do
     Supervisor.start_link(children, opts)
   end
 
+  ##############################################################################
+
   def children do
     Task.Supervisor.children(Tarearbol.Application)
   end
