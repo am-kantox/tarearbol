@@ -76,9 +76,10 @@ defmodule Tarearbol do
 
   @doc "Executes all the scheduled tasks immediately, cleaning up the queue."
   @spec drain() :: [{:error, any} | {:ok, any}]
-  def drain() do
-    jobs = Tarearbol.Application.jobs
+  def drain(jobs \\ Tarearbol.Application.jobs)
+  def drain([]), do: []
+  def drain(jobs) do
     Tarearbol.Application.kill()
-    for {job, opts, _at} <- jobs, do: Tarearbol.ensure(job, opts)
+    for {job, _at, opts} <- jobs, do: Tarearbol.ensure(job, opts)
   end
 end
