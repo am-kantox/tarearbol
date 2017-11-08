@@ -22,7 +22,7 @@ defmodule Tarearbol.Cron do
 
   #############################################################################
 
-  def tasks(), do: GenServer.call(__MODULE__, :tasks)
+  def jobs(), do: GenServer.call(__MODULE__, :tasks)
 
   def clear!(), do: GenServer.call(__MODULE__, :clear)
 

@@ -19,7 +19,7 @@ defmodule Tarearbol.Errand do
       waiting_time = Tarearbol.Utils.interval(interval, value: 0)
       task_details = {job, interval_to_datetime(waiting_time), opts}
 
-      Process.put(:job, {job, opts, Tarearbol.Utils.add_interval(interval)})
+      Process.put(:job, {job, Tarearbol.Utils.add_interval(interval), opts})
       Tarearbol.Cron.put_task(task_details)
       Process.sleep(waiting_time)
       result = Tarearbol.Job.ensure(job, opts)
