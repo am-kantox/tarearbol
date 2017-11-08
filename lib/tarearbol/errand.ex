@@ -17,12 +17,13 @@ defmodule Tarearbol.Errand do
   def run_in(job, interval, opts \\ opts()) do
     Tarearbol.Application.task!(fn ->
       waiting_time = Tarearbol.Utils.interval(interval, value: 0)
+      task_details = {job, interval_to_datetime(waiting_time), opts}
 
       Process.put(:job, {job, opts, Tarearbol.Utils.add_interval(interval)})
-      Tarearbol.Cron.put_task({interval_to_datetime(waiting_time), job})
+      Tarearbol.Cron.put_task(task_details)
       Process.sleep(waiting_time)
       result = Tarearbol.Job.ensure(job, opts)
-      Tarearbol.Cron.del_task({interval_to_datetime(waiting_time), job})
+      Tarearbol.Cron.del_task(task_details)
       Process.delete(:job)
 
       cond do

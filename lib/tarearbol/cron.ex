@@ -1,4 +1,6 @@
 defmodule Tarearbol.Cron do
+  @moduledoc false
+
   use GenServer
   require Logger
 
@@ -7,29 +9,33 @@ defmodule Tarearbol.Cron do
   end
 
   def init(:ok) do
-    {:ok, table} = :dets.open_file(:tasks, [type: :set])
+    {:ok, table} = :dets.open_file(:tarearbol, [type: :set])
     table
     |> tasks!()
-    |> Enum.each(fn {t, {m, f, a}} ->
-         Tarearbol.Errand.run_at({m, f, a}, t)
+    |> Enum.each(fn {{m, f, a}, t, o} ->
+         Tarearbol.Errand.run_at({m, f, a}, t, o)
        end)
     {:ok, table}
   end
+
+  def terminate(_reason, table), do: :dets.close(table)
+
+  #############################################################################
 
   def tasks(), do: GenServer.call(__MODULE__, :tasks)
 
   def clear!(), do: GenServer.call(__MODULE__, :clear)
 
-  def put_task({_time, {_mod, _fun, _args}} = task),
+  def put_task({{_mod, _fun, _args}, _time, _opts} = task),
     do: GenServer.call(__MODULE__, {:put_task, task})
 
-  def put_task({_time, fun} = task) when is_function(fun),
+  def put_task({fun, _time, _opts} = task) when is_function(fun),
     do: GenServer.call(__MODULE__, {:not_supported, task})
 
-  def del_task({_time, {_mod, _fun, _args}} = task),
+  def del_task({{_mod, _fun, _args}, _time, _opts} = task),
     do: GenServer.call(__MODULE__, {:del_task, task})
 
-  def del_task({_time, fun} = task) when is_function(fun),
+  def del_task({fun, _time, _opts} = task) when is_function(fun),
     do: GenServer.call(__MODULE__, {:not_supported, task})
 
   #############################################################################
@@ -48,13 +54,13 @@ defmodule Tarearbol.Cron do
     {:reply, task, table}
   end
 
-  def handle_call({:put_task, {_time, {_mod, _fun, _args}} = task}, _from, table) do
+  def handle_call({:put_task, {{_mod, _fun, _args}, _time, _opts} = task}, _from, table) do
     reply = [task | do_delete(task, table)]
     :dets.insert(table, {:tasks, reply})
     {:reply, reply, table}
   end
 
-  def handle_call({:del_task, {_time, {_mod, _fun, _args}} = task}, _from, table) do
+  def handle_call({:del_task, {{_mod, _fun, _args}, _time, _opts} = task}, _from, table) do
     reply = do_delete(task, table)
     :dets.insert(table, {:tasks, reply})
     {:reply, reply, table}
@@ -62,18 +68,20 @@ defmodule Tarearbol.Cron do
 
   #############################################################################
 
-  defp do_delete({time, {mod, fun, args}}, table) do
+  defp do_delete({{mod, fun, args}, time, opts}, table) do
     table
     |> tasks!()
-    |> Enum.filter(fn {t, {m, f, a}} ->
-         DateTime.diff(t, time, :microsecond) >= 1_000 || m != mod || f != fun || a != args
+    |> Enum.filter(fn {{m, f, a}, t, o} ->
+         DateTime.diff(t, time, :microsecond) >= 1_000 ||
+           m != mod || f != fun || a != args ||
+           Enum.sort(o) != Enum.sort(opts)
        end)
   end
 
   # FIXME [AM] REFACTOR
   defp tasks!(table) do
     case :dets.lookup(table, :tasks) do
-      {:error, reason} ->
+      {:error, _reason} ->
         :dets.insert(table, {:tasks, []})
         []
       [] ->
