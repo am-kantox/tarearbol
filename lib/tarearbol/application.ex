@@ -26,13 +26,13 @@ defmodule Tarearbol.Application do
   end
 
   def jobs do
-    Tarearbol.Application.children
-    |> Enum.map(& Process.info(&1, :dictionary))
+    Tarearbol.Application.children()
+    |> Enum.map(&Process.info(&1, :dictionary))
     |> Enum.map(fn {:dictionary, dict} -> dict[:job] end)
     |> Enum.filter(& &1)
   end
 
-  def kill(), do: for child <- children(), do: kill(child)
+  def kill(), do: for(child <- children(), do: kill(child))
 
   def kill(child) when is_pid(child) do
     Tarearbol.Application.children()

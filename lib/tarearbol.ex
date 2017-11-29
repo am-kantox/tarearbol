@@ -29,27 +29,33 @@ defmodule Tarearbol do
   - `on_fail` [_default:_ `nil`], same as above, called when the task finally
     failed after `attempts` amount of insuccessful attempts
   """
-  @spec ensure((Function.t | {Module.t, Atom.t, List.t}), Keyword.t) :: ({:error, any} | {:ok, any})
+  @spec ensure(Function.t() | {Module.t(), Atom.t(), List.t()}, Keyword.t()) ::
+          {:error, any} | {:ok, any}
   def ensure(job, opts \\ []), do: Tarearbol.Job.ensure(job, opts)
 
   @doc """
   Same as `Tarearbol.ensure/2`, but it raises on fail and returns the result
     itself on successful execution.
   """
-  @spec ensure!((Function.t | {Module.t, Atom.t, List.t}), Keyword.t) :: ({:error, any} | {:ok, any})
+  @spec ensure!(Function.t() | {Module.t(), Atom.t(), List.t()}, Keyword.t()) ::
+          {:error, any} | {:ok, any}
   def ensure!(job, opts \\ []), do: Tarearbol.Job.ensure!(job, opts)
 
   @doc "Spawns an ensured job asynchronously, passing all options given."
-  @spec spawn_ensured((Function.t | {Module.t, Atom.t, List.t}), Keyword.t) :: Task.t
+  @spec spawn_ensured(Function.t() | {Module.t(), Atom.t(), List.t()}, Keyword.t()) :: Task.t()
   def spawn_ensured(job, opts),
-    do: Tarearbol.Errand.run_in(job, :none, Keyword.merge(opts, [sidekiq: true, on_retry: :warn]))
+    do: Tarearbol.Errand.run_in(job, :none, Keyword.merge(opts, sidekiq: true, on_retry: :warn))
 
   @doc "Wrapper for [`Task.Supervisor.async_stream/4`](https://hexdocs.pm/elixir/Task.Supervisor.html#async_stream/4)."
-  @spec ensure_all_streamed([Function.t | {Module.t, Atom.t, List.t}], Keyword.t) :: [Stream.t]
+  @spec ensure_all_streamed([Function.t() | {Module.t(), Atom.t(), List.t()}], Keyword.t()) :: [
+          Stream.t()
+        ]
   def ensure_all_streamed(jobs, opts \\ []), do: Tarearbol.Jobs.ensure_all_streamed(jobs, opts)
 
   @doc "Executes `Tarearbol.ensure_all_streamed/2` and collects tasks results."
-  @spec ensure_all([Function.t | {Module.t, Atom.t, List.t}], Keyword.t) :: [{:error, any} | {:ok, any}]
+  @spec ensure_all([Function.t() | {Module.t(), Atom.t(), List.t()}], Keyword.t()) :: [
+          {:error, any} | {:ok, any}
+        ]
   def ensure_all(jobs, opts \\ []), do: Tarearbol.Jobs.ensure_all(jobs, opts)
 
   @doc """
@@ -57,7 +63,11 @@ defmodule Tarearbol do
 
   See [`Tarearbol.ensure/2`] for all possible variants of the `interval` argument.
   """
-  @spec run_in((Function.t | {Module.t, Atom.t, List.t}), (Atom.t | Integer.t | Float.t), Keyword.t) :: Task.t
+  @spec run_in(
+          Function.t() | {Module.t(), Atom.t(), List.t()},
+          Atom.t() | Integer.t() | Float.t(),
+          Keyword.t()
+        ) :: Task.t()
   def run_in(job, interval, opts \\ []), do: Tarearbol.Errand.run_in(job, interval, opts)
 
   @doc """
@@ -67,17 +77,22 @@ defmodule Tarearbol do
   If the second parameter is a [`Time`] struct, the task will be run at that time
     on daily basis.
   """
-  @spec run_at((Function.t | {Module.t, Atom.t, List.t}), (DateTime.t | String.t), Keyword.t) :: Task.t
+  @spec run_at(
+          Function.t() | {Module.t(), Atom.t(), List.t()},
+          DateTime.t() | String.t(),
+          Keyword.t()
+        ) :: Task.t()
   def run_at(job, at, opts \\ []), do: Tarearbol.Errand.run_at(job, at, opts)
 
   @doc "Spawns the task for the immediate async execution."
-  @spec spawn((Function.t | {Module.t, Atom.t, List.t}), Keyword.t) :: Task.t
+  @spec spawn(Function.t() | {Module.t(), Atom.t(), List.t()}, Keyword.t()) :: Task.t()
   def spawn(job, opts \\ []), do: Tarearbol.Errand.spawn(job, opts)
 
   @doc "Executes all the scheduled tasks immediately, cleaning up the queue."
   @spec drain() :: [{:error, any} | {:ok, any}]
-  def drain(jobs \\ Tarearbol.Application.jobs)
+  def drain(jobs \\ Tarearbol.Application.jobs())
   def drain([]), do: []
+
   def drain(jobs) do
     Tarearbol.Application.kill()
     for {job, _at, opts} <- jobs, do: Tarearbol.ensure(job, opts)
