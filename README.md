@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.4"}
+    {:tarearbol, "~> 0.6"}
   ]
 end
 ```
@@ -135,7 +135,9 @@ Tarearbol.drain
 
 ### Changelog
 
-- `0.5.0` [**to do**] using `DETS` to store `run_at` jobs;
+- `0.6.0` code format, explicit `Task.shutdown`;
+
+- `0.5.0` using `DETS` to store `run_at` jobs;
 
 - `0.4.2` `Tarearbol.spawn_ensured/2`;
 - `0.4.1` `run_at` now repeats itself properly;
