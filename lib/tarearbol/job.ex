@@ -71,7 +71,10 @@ defmodule Tarearbol.Job do
   end
 
   defp do_retry(job, opts, retries_left) do
-    case {opts[:accept_not_ok], job |> Tarearbol.Application.task!() |> Task.yield(opts[:timeout])} do
+    task = Tarearbol.Application.task!(job)
+    yielded = Task.yield(task, opts[:timeout]) || Task.shutdown(task)
+
+    case {opts[:accept_not_ok], yielded} do
       {_, {:exit, data}} ->
         delay(opts)
         retry_or_die(:on_raise, job, opts, data, retries_left)
