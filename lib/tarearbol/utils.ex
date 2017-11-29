@@ -4,9 +4,16 @@ defmodule Tarearbol.Utils do
   # Set of utilities used in `Tarearbol`. It currently includes human-to-machine
   #   interval conversions and options extractor.
 
-  @type interval :: (Integer.t | Float.t |
-                     :none | :tiny | :medium | :regular |
-                     :timeout | :infinity | :random)
+  @type interval ::
+          Integer.t()
+          | Float.t()
+          | :none
+          | :tiny
+          | :medium
+          | :regular
+          | :timeout
+          | :infinity
+          | :random
 
   @doc """
   Converts a human representation of time interval to the one
@@ -19,7 +26,7 @@ defmodule Tarearbol.Utils do
   - `:medium` → `100`;
   - `:infinity` → `-1`, `:attempts` only.
   """
-  @spec interval(Interval.t, List.t) :: Integer.t
+  @spec interval(Interval.t(), List.t()) :: Integer.t()
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
@@ -40,9 +47,10 @@ defmodule Tarearbol.Utils do
   Adds an interval to the given `DateTime` instance (or to
     `DateTime.utc_now` if none given, returning the `DateTime` instance.
   """
-  @spec add_interval(Interval.t, DateTime.t | nil) :: DateTime.t
+  @spec add_interval(Interval.t(), DateTime.t() | nil) :: DateTime.t()
   def add_interval(input, to \\ nil)
-  def add_interval(input, nil), do: add_interval(input, DateTime.utc_now)
+  def add_interval(input, nil), do: add_interval(input, DateTime.utc_now())
+
   def add_interval(input, %DateTime{} = to) do
     to
     |> DateTime.to_unix(:milliseconds)
@@ -53,28 +61,37 @@ defmodule Tarearbol.Utils do
   #############################################################################
 
   @default_opts [
-    attempts: 0, delay: 0, timeout: 5_000, raise: false, accept_not_ok: true,
-    on_success: nil, on_retry: :debug, on_fail: :warn]
+    attempts: 0,
+    delay: 0,
+    timeout: 5_000,
+    raise: false,
+    accept_not_ok: true,
+    on_success: nil,
+    on_retry: :debug,
+    on_fail: :warn
+  ]
 
   @doc false
-  @spec opts(Keyword.t) :: Keyword.t
+  @spec opts(Keyword.t()) :: Keyword.t()
   def opts(opts),
     do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
   @doc false
-  @spec extract_opts(Keyword.t, Atom.t | List.t, any) :: Keyword.t
+  @spec extract_opts(Keyword.t(), Atom.t() | List.t(), any) :: Keyword.t()
   def extract_opts(opts, name, default \\ nil)
+
   def extract_opts(opts, name, default) when is_atom(name) do
     opts = opts(opts)
     {Keyword.get(opts, name, default), Keyword.delete(opts, name)}
   end
+
   def extract_opts(opts, names, default) when is_list(names) and is_nil(default),
     do: Keyword.split(opts(opts), names)
 
   #############################################################################
 
   @doc false
-  def cron_to_time(at) when is_binary(at), do: raise "NYI: #{inspect at}"
+  def cron_to_time(at) when is_binary(at), do: raise("NYI: #{inspect(at)}")
 
   # defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do
   # defp decronify(<<"*/" :: binary, rest :: binary>>, min, max) do
@@ -86,5 +103,4 @@ defmodule Tarearbol.Utils do
   #   |> Enum.map(fn {value, _} -> value end)
   # end
   # defp decronify("*", min, max), do: Enum.to_list(min..max)
-
 end

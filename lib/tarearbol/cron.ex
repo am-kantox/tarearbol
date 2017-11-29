@@ -9,12 +9,14 @@ defmodule Tarearbol.Cron do
   end
 
   def init(:ok) do
-    {:ok, table} = :dets.open_file(:tarearbol, [type: :set])
+    {:ok, table} = :dets.open_file(:tarearbol, type: :set)
+
     table
     |> tasks!()
     |> Enum.each(fn {{m, f, a}, t, o} ->
          Tarearbol.Errand.run_at({m, f, a}, t, o)
        end)
+
     {:ok, table}
   end
 
@@ -40,8 +42,7 @@ defmodule Tarearbol.Cron do
 
   #############################################################################
 
-  def handle_call(:tasks, _from, table),
-    do: {:reply, tasks!(table), table}
+  def handle_call(:tasks, _from, table), do: {:reply, tasks!(table), table}
 
   def handle_call(:clear, _from, table) do
     cleared = tasks!(table)
@@ -50,7 +51,7 @@ defmodule Tarearbol.Cron do
   end
 
   def handle_call({:not_supported, task}, _from, table) do
-    Logger.error("Inplace functions are not supported. Got [#{inspect task}].")
+    Logger.error("Inplace functions are not supported. Got [#{inspect(task)}].")
     {:reply, task, table}
   end
 
@@ -72,8 +73,7 @@ defmodule Tarearbol.Cron do
     table
     |> tasks!()
     |> Enum.filter(fn {{m, f, a}, t, o} ->
-         DateTime.diff(t, time, :microsecond) >= 1_000 ||
-           m != mod || f != fun || a != args ||
+         DateTime.diff(t, time, :microsecond) >= 1_000 || m != mod || f != fun || a != args ||
            Enum.sort(o) != Enum.sort(opts)
        end)
   end
@@ -84,10 +84,13 @@ defmodule Tarearbol.Cron do
       {:error, _reason} ->
         :dets.insert(table, {:tasks, []})
         []
+
       [] ->
         :dets.insert(table, {:tasks, []})
         []
-      tasks -> tasks[:tasks]
+
+      tasks ->
+        tasks[:tasks]
     end
   end
 end

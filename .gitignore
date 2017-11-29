@@ -21,3 +21,6 @@ erl_crash.dump
 
 # DETS (used for tests)
 /tarearbol
+
+# vscode LS data
+/.elixir_ls/
