@@ -157,8 +157,8 @@ defmodule TarearbolTest do
     res =
       1..20
       |> Enum.map(fn i ->
-           fn -> Process.sleep(Enum.random(1..i)) end
-         end)
+        fn -> Process.sleep(Enum.random(1..i)) end
+      end)
       |> Tarearbol.ensure_all(attempts: 1)
       |> Enum.map(fn {result, _} -> result end)
 
@@ -169,12 +169,12 @@ defmodule TarearbolTest do
     res =
       1..20
       |> Enum.map(fn i ->
-           fn ->
-             tos = Enum.random(i..100)
-             if tos > 80, do: raise("YO")
-             Process.sleep(tos)
-           end
-         end)
+        fn ->
+          tos = Enum.random(i..100)
+          if tos > 80, do: raise("YO")
+          Process.sleep(tos)
+        end
+      end)
       |> Tarearbol.ensure_all()
       |> Enum.map(fn {result, _} -> result end)
 
@@ -190,8 +190,8 @@ defmodule TarearbolTest do
     res =
       1..20
       |> Enum.map(fn _ ->
-           fn -> raise "¡!" end
-         end)
+        fn -> raise "¡!" end
+      end)
       |> Tarearbol.ensure_all(attempts: 1, raise: false)
       |> Enum.map(fn {result, _} -> result end)
 
@@ -205,8 +205,8 @@ defmodule TarearbolTest do
     res =
       1..6
       |> Enum.map(fn _ ->
-           fn -> Process.sleep(6_000) end
-         end)
+        fn -> Process.sleep(6_000) end
+      end)
       |> Tarearbol.ensure_all(attempts: 1, max_concurrency: 8, timeout: 10_000)
       |> Enum.map(fn {result, _} -> result end)
 
