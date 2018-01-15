@@ -26,9 +26,6 @@ defmodule Tarearbol.Job do
 
   defp on_callback(value, data, log_prefix \\ "JOB") do
     case value do
-      nil ->
-        :ok
-
       level when is_atom(level) ->
         do_log(level, "[#{log_prefix}] #{inspect(data)}")
 
@@ -38,23 +35,28 @@ defmodule Tarearbol.Job do
       fun when is_function(fun, 1) ->
         fun.(data)
 
-      {mod, fun} ->
+      {mod, fun, args} when is_list(args) ->
         arities =
           mod
           |> apply(:__info__, [:functions])
           |> Keyword.get_values(fun)
 
+        args_length = Enum.count(args)
+
         params =
           cond do
-            Enum.member?(arities, 1) -> [data]
-            Enum.member?(arities, 0) -> []
+            Enum.member?(arities, 1 + args_length) -> [data | args]
+            Enum.member?(arities, args_length) -> args
             true -> nil
           end
 
         if params, do: apply(mod, fun, params)
 
+      {mod, fun} ->
+        on_callback({mod, fun, []}, data, log_prefix)
+
       _ ->
-        :ok
+        nil
     end
   end
 
@@ -70,6 +72,7 @@ defmodule Tarearbol.Job do
     opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
   end
 
+  defp do_log(nil, _message), do: nil
   defp do_log(level, message), do: Logger.log(level, message)
 
   #############################################################################
