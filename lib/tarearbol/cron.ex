@@ -14,8 +14,8 @@ defmodule Tarearbol.Cron do
     table
     |> tasks!()
     |> Enum.each(fn {{m, f, a}, t, o} ->
-         Tarearbol.Errand.run_at({m, f, a}, t, o)
-       end)
+      Tarearbol.Errand.run_at({m, f, a}, t, o)
+    end)
 
     {:ok, table}
   end
@@ -73,9 +73,9 @@ defmodule Tarearbol.Cron do
     table
     |> tasks!()
     |> Enum.filter(fn {{m, f, a}, t, o} ->
-         DateTime.diff(t, time, :microsecond) >= 1_000 || m != mod || f != fun || a != args ||
-           Enum.sort(o) != Enum.sort(opts)
-       end)
+      DateTime.diff(t, time, :microsecond) >= 1_000 || m != mod || f != fun || a != args ||
+        Enum.sort(o) != Enum.sort(opts)
+    end)
   end
 
   # FIXME [AM] REFACTOR

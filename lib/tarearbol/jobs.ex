@@ -11,18 +11,18 @@ defmodule Tarearbol.Jobs do
     Tarearbol.Application
     |> Task.Supervisor.async_stream(list, Tarearbol.Job, :ensure, [task_opts], stream_opts)
     |> Stream.map(fn
-         # Task succeeded
-         {:ok, {:ok, whatever}} ->
-           {:ok, whatever}
+      # Task succeeded
+      {:ok, {:ok, whatever}} ->
+        {:ok, whatever}
 
-         # Task failed
-         {:ok, {:error, whatever}} ->
-           {:error, whatever}
+      # Task failed
+      {:ok, {:error, whatever}} ->
+        {:error, whatever}
 
-         # Task failed on OTP level
-         whatever ->
-           whatever
-       end)
+      # Task failed on OTP level
+      whatever ->
+        whatever
+    end)
   end
 
   @spec ensure_all([Task.t()], Keyword.t()) :: [{:ok, any} | {:error, any}]
