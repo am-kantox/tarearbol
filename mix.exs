@@ -4,16 +4,20 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
+  @app_name "Tarearbol"
+  @version "0.7.0"
 
   def project do
     [
       app: @app,
-      version: "0.6.1",
+      version: @version,
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       package: package(),
+      xref: [exclude: []],
       description: description(),
-      deps: deps()
+      deps: deps(),
+      docs: docs()
     ]
   end
 
@@ -55,6 +59,26 @@ defmodule Tarearbol.Mixfile do
         "GitHub" => "https://github.com/am-kantox/#{@app}",
         "Docs" => "https://hexdocs.pm/#{@app}"
       }
+    ]
+  end
+
+  defp docs() do
+    [
+      main: @app_name,
+      source_ref: "v#{@version}",
+      canonical: "http://hexdocs.pm/#{@app}",
+      logo: "stuff/images/logo.png",
+      source_url: "https://github.com/am-kantox/#{@app}",
+      extras: [
+        "stuff/pages/intro.md"
+      ],
+      groups_for_modules: [
+        # Tarearbol
+
+        "Exceptions": [
+          Tarearbol.TaskFailedError
+        ]
+      ]
     ]
   end
 end

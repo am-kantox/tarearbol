@@ -30,7 +30,8 @@ defmodule Tarearbol.Errand do
       Process.delete(:job)
 
       cond do
-        opts[:sidekiq] -> run_in(job, sidekiq_interval(waiting_time), opts)
+        # FIXME deal with attempts above and rerun unless success
+        # opts[:sidekiq] -> run_in(job, sidekiq_interval(waiting_time), opts)
         opts[:next_run] -> run_at(job, opts[:next_run], opts)
         opts[:repeatedly] -> run_in(job, interval, opts)
         true -> result
@@ -91,6 +92,7 @@ defmodule Tarearbol.Errand do
   @mike_perham_const 1.15647559215
 
   @spec sidekiq_interval(Integer.t()) :: Integer.t()
+  defp sidekiq_interval(interval) when interval <= 0, do: 0
   defp sidekiq_interval(interval),
     do: @mike_perham_const * interval * :math.atan(:math.log(interval))
 
