@@ -34,7 +34,8 @@ defmodule Tarearbol.Mixfile do
     [
       {:credo, "~> 0.8", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
-      {:mock, "~> 0.2", only: :test}
+      {:mock, "~> 0.2", only: :test},
+      {:stream_data, "~>0.4", only: :test}
     ]
   end
 
