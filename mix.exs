@@ -5,7 +5,7 @@ defmodule Tarearbol.Mixfile do
 
   @app :tarearbol
   @app_name "Tarearbol"
-  @version "0.7.0"
+  @version "0.8.0"
 
   def project do
     [
@@ -24,7 +24,7 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :envio],
       mod: {Tarearbol.Application, []}
     ]
   end
@@ -32,6 +32,8 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:envio, ">= 0.3.2"},
+
       {:credo, "~> 0.8", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: :test},
