@@ -6,6 +6,8 @@ defmodule TarearbolTest do
 
   setup do
     Tarearbol.Cron.clear!()
+    # {:ok, pid} = Tarearbol.Subscriber.start_link
+    # %{pid: pid}
   end
 
   test "responds with :not_found on a non-existing child" do

@@ -1,4 +1,5 @@
 defmodule Tarearbol.Publisher do
+  @moduledoc false
   use Envio.Publisher, channel: :all
 
   def publish(channel, value, data) when is_nil(channel) or not is_atom(channel),

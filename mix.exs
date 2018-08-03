@@ -5,7 +5,7 @@ defmodule Tarearbol.Mixfile do
 
   @app :tarearbol
   @app_name "Tarearbol"
-  @version "0.8.0"
+  @version "0.8.1"
 
   def project do
     [
