@@ -25,6 +25,8 @@ defmodule Tarearbol.Job do
   ##############################################################################
 
   defp on_callback(value, data, log_prefix \\ "JOB") do
+    Tarearbol.Publisher.publish(value, data)
+
     case value do
       level when is_atom(level) ->
         do_log(level, "[#{log_prefix}] #{inspect(data)}")
