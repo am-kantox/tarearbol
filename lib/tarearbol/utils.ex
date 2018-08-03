@@ -68,7 +68,7 @@ defmodule Tarearbol.Utils do
     accept_not_ok: true,
     on_success: nil,
     on_retry: :debug,
-    on_fail: :warn
+    on_fail: :error
   ]
 
   @doc false

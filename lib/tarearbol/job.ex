@@ -24,8 +24,8 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
-  defp on_callback(value, data, log_prefix \\ "JOB") do
-    Tarearbol.Publisher.publish(value, data)
+  defp on_callback(value, data, log_prefix \\ "JOB", level: level) do
+    Tarearbol.Publisher.publish(level, value, data)
 
     case value do
       level when is_atom(level) ->
@@ -55,23 +55,30 @@ defmodule Tarearbol.Job do
         if params, do: apply(mod, fun, params)
 
       {mod, fun} ->
-        on_callback({mod, fun, []}, data, log_prefix)
+        on_callback({mod, fun, []}, data, log_prefix, level: level)
 
       _ ->
         nil
     end
   end
 
-  defp on_success(value, data), do: on_callback(value, data)
-  defp on_problem(value, data, log_prefix), do: on_callback(value, data, log_prefix)
+  defp on_success(value, data, level: level),
+    do: on_callback(value, data, level: level)
+  defp on_problem(value, data, log_prefix, level: level),
+    do: on_callback(value, data, log_prefix, level: level)
 
   defp delay(opts) do
-    opts |> Keyword.get(:delay, :infinity) |> Tarearbol.Utils.interval() |> abs()
+    opts
+    |> Keyword.get(:delay, :infinity)
+    |> Tarearbol.Utils.interval()
+    |> abs()
     |> Process.sleep()
   end
 
   defp attempts(opts) do
-    opts |> Keyword.get(:attempts, :infinity) |> Tarearbol.Utils.interval()
+    opts
+    |> Keyword.get(:attempts, :infinity)
+    |> Tarearbol.Utils.interval()
   end
 
   defp do_log(nil, _message), do: nil
@@ -85,12 +92,12 @@ defmodule Tarearbol.Job do
   defp return_or_raise(job, data, false), do: {:error, %{outcome: data, job: job}}
 
   defp retry_or_die(cause, job, opts, data, retries_left) when retries_left == 0 do
-    on_problem(opts[:on_fail], %{cause: cause, data: data}, @task_fail)
+    on_problem(opts[:on_fail], %{cause: cause, data: data}, @task_fail, level: :error)
     return_or_raise(job, data, opts[:raise])
   end
 
   defp retry_or_die(cause, job, opts, data, retries_left) do
-    on_problem(opts[:on_retry], %{cause: cause, data: data}, @task_retry)
+    on_problem(opts[:on_retry], %{cause: cause, data: data}, @task_retry, level: :warn)
     do_retry(job, opts, retries_left - 1)
   end
 
@@ -112,15 +119,15 @@ defmodule Tarearbol.Job do
         retry_or_die(:on_error, job, opts, data, retries_left)
 
       {_, {:ok, :ok}} ->
-        on_success(opts[:on_success], :ok)
+        on_success(opts[:on_success], :ok, level: :info)
         {:ok, :ok}
 
       {_, {:ok, {:ok, data}}} ->
-        on_success(opts[:on_success], data)
+        on_success(opts[:on_success], data, level: :info)
         {:ok, data}
 
       {true, {:ok, data}} ->
-        on_success(opts[:on_success], data)
+        on_success(opts[:on_success], data, level: :info)
         {:ok, data}
 
       {false, {:ok, data}} ->
