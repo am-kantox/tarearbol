@@ -5,7 +5,7 @@ defmodule Tarearbol.Mixfile do
 
   @app :tarearbol
   @app_name "Tarearbol"
-  @version "0.8.1"
+  @version "0.8.2"
 
   def project do
     [
@@ -32,9 +32,8 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:envio, ">= 0.3.2"},
-
-      {:credo, "~> 0.8", only: :dev},
+      {:envio, "~> 0.4"},
+      {:credo, "~> 1.0", only: :dev},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: :test},
       {:stream_data, "~>0.4", only: :test}
@@ -78,7 +77,7 @@ defmodule Tarearbol.Mixfile do
       groups_for_modules: [
         # Tarearbol
 
-        "Exceptions": [
+        Exceptions: [
           Tarearbol.TaskFailedError
         ]
       ]

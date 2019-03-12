@@ -53,9 +53,9 @@ defmodule Tarearbol.Utils do
 
   def add_interval(input, %DateTime{} = to) do
     to
-    |> DateTime.to_unix(:milliseconds)
+    |> DateTime.to_unix(:millisecond)
     |> Kernel.+(interval(input))
-    |> DateTime.from_unix!(:milliseconds)
+    |> DateTime.from_unix!(:millisecond)
   end
 
   #############################################################################
