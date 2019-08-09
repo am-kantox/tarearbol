@@ -24,6 +24,7 @@ defmodule Tarearbol.DynamicManager do
 
       {:ok, pid} = DynamicManager.start_link()
   """
+  @moduledoc since: "0.9.0"
 
   @doc """
   This function is called to retrieve the map of children with name as key
@@ -34,6 +35,7 @@ defmodule Tarearbol.DynamicManager do
   If the worker is not explicitly given here, the default one will be
   created using the `process/1` callback.
   """
+  @doc since: "0.9.0"
   @callback children_specs :: %{required(binary()) => list() | {module(), list()}}
 
   @doc """
@@ -48,6 +50,7 @@ defmodule Tarearbol.DynamicManager do
   Has default overridable implementation, which is a noop for those who manage
   all the children manually.
   """
+  @doc since: "0.9.0"
   @callback runner :: any()
 
   @doc """
@@ -59,6 +62,7 @@ defmodule Tarearbol.DynamicManager do
   all it needs from runners is a side effect, there is a default implementation
   that does nothing.
   """
+  @doc since: "0.9.0"
   @callback on_state_change(state :: :down | :up | :starting | :unknown) :: :ok | :restart
 
   defmodule State do
@@ -115,6 +119,7 @@ defmodule Tarearbol.DynamicManager do
       do: {:noreply, %{state | state: new_state}}
   end
 
+  @doc false
   defmacro __using__(_opts) do
     quote do
       require Logger
