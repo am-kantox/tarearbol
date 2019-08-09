@@ -27,13 +27,14 @@ defmodule Tarearbol.DynamicManager do
   @moduledoc since: "0.9.0"
 
   @type runner ::
-          {module(), function(), list()} | {module(), function()} | module() | (() -> any())
+          {module(), function(), list()} | {module(), function()} | module() | (binary() -> any())
 
   @doc """
   This function is called to retrieve the map of children with name as key
   and a workers as the value. Optionally the value might be `{m, f, a}` or
   `{m, f}`, or just `m` (the function name is assumed to be `:runner`) or
-  even a plain anonymous function of zrity zero.
+  even a plain anonymous function of arity one. It will receive an `id` of
+  the item in question.
 
   This function should not care about anything save for producing side effects.
 
@@ -54,9 +55,12 @@ defmodule Tarearbol.DynamicManager do
 
   Has default overridable implementation, which is a noop for those who manage
   all the children manually.
+
+  Runner must return `:halt` if it wants to be killed or anything else to
+  be treated as a result.
   """
   @doc since: "0.9.0"
-  @callback runner :: any()
+  @callback runner(id :: binary()) :: any()
 
   @doc """
   Declares an instance-wide callback to report state; if the startup process
@@ -132,15 +136,16 @@ defmodule Tarearbol.DynamicManager do
       @behaviour Tarearbol.DynamicManager
 
       @impl Tarearbol.DynamicManager
-      def runner(),
+      def runner(id),
         do:
           Logger.warn(
-            "runner was executed with state [#{inspect(Tarearbol.DynamicManager.State.state())}]\n" <>
-              "you want to override `runner/0` in your #{inspect(__MODULE__)}\n" <>
+            "runner for id[#{id}] was executed with state\n\n" <>
+              inspect(Tarearbol.DynamicManager.State.state()) <>
+              "\n\nyou want to override `runner/1` in your #{inspect(__MODULE__)}\n" <>
               "to perform some actual work instead of printing this message"
           )
 
-      defoverridable runner: 0
+      defoverridable runner: 1
 
       @impl Tarearbol.DynamicManager
       def on_state_change(state),

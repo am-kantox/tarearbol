@@ -13,23 +13,29 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_info(:work, [id: id, runner: runner] = state) do
-    result =
-      case runner do
-        {m, f, a} -> apply(m, f, a)
-        {m, f} -> apply(m, f, [])
-        m when is_atom(m) -> apply(m, :runner, [])
-        fun when is_function(fun, 0) -> fun.()
-      end
+    runner
+    |> case do
+      {m, f, a} -> apply(m, f, [id | a])
+      {m, f} -> apply(m, f, [id])
+      m when is_atom(m) -> apply(m, :runner, [id])
+      fun when is_function(fun, 1) -> fun.(id)
+    end
+    |> case do
+      :halt ->
+        Tarearbol.InternalWorker.del(id)
+        {:noreply, state}
 
-    updated =
-      id
-      |> Tarearbol.DynamicManager.State.get(%{})
-      |> Map.put(:value, result)
+      result ->
+        updated =
+          id
+          |> Tarearbol.DynamicManager.State.get(%{})
+          |> Map.put(:value, result)
 
-    Tarearbol.DynamicManager.State.put(id, updated)
+        Tarearbol.DynamicManager.State.put(id, updated)
 
-    schedule_work()
-    {:noreply, state}
+        schedule_work()
+        {:noreply, state}
+    end
   end
 
   defp schedule_work do
