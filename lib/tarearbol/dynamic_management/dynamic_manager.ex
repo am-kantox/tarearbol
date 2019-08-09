@@ -28,15 +28,20 @@ defmodule Tarearbol.DynamicManager do
 
   @doc """
   This function is called to retrieve the map of children with name as key
-  and a parameter list as the value. Optionally the value might be a tuple
-  `{module(), [any()]}` in which case the specified `module` will be used
-  as a worker for this child.
+  and a workers as the value. Optionally the value might be `{m, f, a}` or
+  `{m, f}`, or just `m` (the function name is assumed to be `:runner`) or
+  even a plain anonymous function of zrity zero.
 
-  If the worker is not explicitly given here, the default one will be
-  created using the `process/1` callback.
+  This function should not care about anything save for producing side effects.
+
+  It will be backed by `DynamicSupervisor`. The value it returns will be put
+  into the state under `children` key.
   """
   @doc since: "0.9.0"
-  @callback children_specs :: %{required(binary()) => list() | {module(), list()}}
+  @callback children_specs :: %{
+              required(binary()) =>
+                {module(), function(), list()} | {module(), function()} | module() | (() -> any())
+            }
 
   @doc """
   The main function, doing all the job, supervised. This function will be used
@@ -89,7 +94,7 @@ defmodule Tarearbol.DynamicManager do
     def del(id), do: GenServer.cast(__MODULE__, {:del, id})
 
     @spec get(id :: binary()) :: :ok
-    def get(id), do: GenServer.call(__MODULE__, {:get, id})
+    def get(id, default \\ nil), do: GenServer.call(__MODULE__, {:get, id, default})
 
     @impl GenServer
     def init(opts) do
@@ -103,8 +108,8 @@ defmodule Tarearbol.DynamicManager do
       do: {:reply, state, state}
 
     @impl GenServer
-    def handle_call({:get, id}, _from, %__MODULE__{children: children} = state),
-      do: {:reply, Map.get(children, id), state}
+    def handle_call({:get, id, default}, _from, %__MODULE__{children: children} = state),
+      do: {:reply, Map.get(children, id, default), state}
 
     @impl GenServer
     def handle_cast({:put, id, props}, %__MODULE__{children: children} = state),

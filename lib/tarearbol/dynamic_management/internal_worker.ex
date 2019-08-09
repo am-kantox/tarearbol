@@ -15,7 +15,7 @@ defmodule Tarearbol.InternalWorker do
         {:ok, pid} =
           DynamicSupervisor.start_child(
             Tarearbol.DynamicSupervisor,
-            {Tarearbol.DynamicWorker, runner: runner}
+            {Tarearbol.DynamicWorker, id: id, runner: runner}
           )
 
         Tarearbol.DynamicManager.State.put(id, %{pid: pid})
