@@ -5,8 +5,8 @@ defmodule Tarearbol.Utils do
   #   interval conversions and options extractor.
 
   @type interval ::
-          Integer.t()
-          | Float.t()
+          integer()
+          | float()
           | :none
           | :tiny
           | :medium
@@ -26,7 +26,7 @@ defmodule Tarearbol.Utils do
   - `:medium` → `100`;
   - `:infinity` → `-1`, `:attempts` only.
   """
-  @spec interval(Interval.t(), List.t()) :: Integer.t()
+  @spec interval(interval(), list()) :: integer()
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
@@ -47,7 +47,7 @@ defmodule Tarearbol.Utils do
   Adds an interval to the given `DateTime` instance (or to
     `DateTime.utc_now` if none given, returning the `DateTime` instance.
   """
-  @spec add_interval(Interval.t(), DateTime.t() | nil) :: DateTime.t()
+  @spec add_interval(interval(), DateTime.t() | nil) :: DateTime.t()
   def add_interval(input, to \\ nil)
   def add_interval(input, nil), do: add_interval(input, DateTime.utc_now())
 
@@ -77,16 +77,14 @@ defmodule Tarearbol.Utils do
     do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
   @doc false
-  @spec extract_opts(Keyword.t(), Atom.t() | List.t(), any) :: Keyword.t()
+  @spec extract_opts(Keyword.t(), atom() | [atom()], any()) :: {any(), Keyword.t()}
   def extract_opts(opts, name, default \\ nil)
 
-  def extract_opts(opts, name, default) when is_atom(name) do
-    opts = opts(opts)
-    {Keyword.get(opts, name, default), Keyword.delete(opts, name)}
-  end
+  def extract_opts(opts, name, default) when is_atom(name),
+    do: opts |> opts() |> Keyword.pop(name, default)
 
   def extract_opts(opts, names, default) when is_list(names) and is_nil(default),
-    do: Keyword.split(opts(opts), names)
+    do: opts |> opts() |> Keyword.split(names)
 
   #############################################################################
 

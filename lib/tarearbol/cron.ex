@@ -4,11 +4,11 @@ defmodule Tarearbol.Cron do
   use GenServer
   require Logger
 
-  def start_link() do
-    GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+  def start_link(opts \\ []) do
+    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def init(:ok) do
+  def init(_opts) do
     {:ok, table} = :dets.open_file(:tarearbol, type: :set)
 
     table

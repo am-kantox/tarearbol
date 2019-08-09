@@ -64,6 +64,7 @@ defmodule Tarearbol.Job do
 
   defp on_success(value, data, level: level),
     do: on_callback(value, data, level: level)
+
   defp on_problem(value, data, log_prefix, level: level),
     do: on_callback(value, data, log_prefix, level: level)
 
@@ -86,6 +87,8 @@ defmodule Tarearbol.Job do
 
   #############################################################################
 
+  @spec return_or_raise((() -> any()) | {atom(), atom(), [any()]}, any(), boolean()) ::
+          no_return() | {:error, map()}
   defp return_or_raise(job, data, true),
     do: raise(Tarearbol.TaskFailedError, outcome: data, job: job)
 

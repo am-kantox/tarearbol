@@ -17,7 +17,13 @@ defmodule Tarearbol.Mixfile do
       xref: [exclude: []],
       description: description(),
       deps: deps(),
-      docs: docs()
+      aliases: aliases(),
+      xref: [exclude: []],
+      docs: docs(),
+      dialyzer: [
+        plt_file: {:no_warn, ".dialyzer/plts/dialyzer.plt"},
+        ignore_warnings: ".dialyzer/ignore.exs"
+      ]
     ]
   end
 
@@ -34,9 +40,21 @@ defmodule Tarearbol.Mixfile do
     [
       {:envio, "~> 0.4"},
       {:credo, "~> 1.0", only: :dev},
+      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: :test},
-      {:stream_data, "~>0.4", only: :test}
+      {:stream_data, "~> 0.4", only: :test}
+    ]
+  end
+
+  defp aliases do
+    [
+      quality: ["format", "credo --strict", "dialyzer"],
+      "quality.ci": [
+        "format --check-formatted",
+        "credo --strict",
+        "dialyzer --halt-exit-status"
+      ]
     ]
   end
 
@@ -64,7 +82,7 @@ defmodule Tarearbol.Mixfile do
     ]
   end
 
-  defp docs() do
+  defp docs do
     [
       main: @app_name,
       source_ref: "v#{@version}",

@@ -3,7 +3,9 @@ defmodule Tarearbol.Jobs do
 
   alias Tarearbol.Utils
 
-  @spec ensure_all_streamed([Task.t()], Keyword.t()) :: [{:ok, any} | {:error, any}]
+  @spec ensure_all_streamed([(() -> any()) | {module(), atom(), list()}], Keyword.t()) :: [
+          %Stream{}
+        ]
   def ensure_all_streamed(list, opts \\ []) do
     {stream_opts, task_opts} = Utils.extract_opts(opts, ~w|max_concurrency ordered on_timeout|a)
     stream_opts = Keyword.merge(stream_opts, timeout: task_opts[:timeout])
@@ -25,6 +27,8 @@ defmodule Tarearbol.Jobs do
     end)
   end
 
-  @spec ensure_all([Task.t()], Keyword.t()) :: [{:ok, any} | {:error, any}]
+  @spec ensure_all([(() -> any()) | {module(), atom(), list()}], Keyword.t()) :: [
+          {:ok, any} | {:error, any}
+        ]
   def ensure_all(list, opts \\ []), do: list |> ensure_all_streamed(opts) |> Enum.to_list()
 end

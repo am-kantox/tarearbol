@@ -13,7 +13,7 @@ defmodule Tarearbol.Errand do
     at the specified `%Time{}`.
   """
   @spec run_in(
-          Function.t() | {Module.t(), Atom.t(), List.t()},
+          (() -> any()) | {module(), atom(), list()},
           Tarearbol.Utils.interval(),
           Keyword.t()
         ) :: Task.t()
@@ -44,7 +44,7 @@ defmodule Tarearbol.Errand do
     at the specified `%Time{}`.
   """
   @spec run_at(
-          Function.t() | {Module.t(), Atom.t(), List.t()},
+          (() -> any()) | {module(), atom(), list()},
           DateTime.t() | Time.t() | String.t(),
           Keyword.t()
         ) :: Task.t()
@@ -77,7 +77,7 @@ defmodule Tarearbol.Errand do
   def run_at(job, at, opts) when is_binary(at), do: run_at(job, DateTime.from_iso8601(at), opts)
 
   @doc "Spawns the task by calling `run_in` with a zero interval"
-  @spec spawn(Function.t() | {Module.t(), Atom.t(), List.t()}, Keyword.t()) :: Task.t()
+  @spec spawn((() -> any()) | {module(), atom(), list()}, Keyword.t()) :: Task.t()
   def spawn(job, opts \\ opts()), do: run_in(job, :none, opts)
 
   ##############################################################################
@@ -91,8 +91,9 @@ defmodule Tarearbol.Errand do
   # to perform 25 times in 21 day
   @mike_perham_const 1.15647559215
 
-  @spec sidekiq_interval(Integer.t()) :: Integer.t()
+  @spec sidekiq_interval(integer()) :: integer()
   defp sidekiq_interval(interval) when interval <= 0, do: 0
+
   defp sidekiq_interval(interval),
     do: @mike_perham_const * interval * :math.atan(:math.log(interval))
 
