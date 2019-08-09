@@ -1,4 +1,5 @@
 defmodule Tarearbol.InternalWorker do
+  @moduledoc false
   use GenServer
 
   def start_link(manager: manager),

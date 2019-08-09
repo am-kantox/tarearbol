@@ -1,5 +1,5 @@
 defmodule Tarearbol.DynamicManager do
-  @moduledoc """
+  @moduledoc ~S"""
   The scaffold implementation to dynamically manage many similar tasks running
   as processes.
 
@@ -11,6 +11,18 @@ defmodule Tarearbol.DynamicManager do
   Typically one calls `use Tarearbol.DynamicManager` and implements at least
   `children_specs/0` callback and receives back supervised tree with a state
   and many processes controlled by `DynamicSupervisor`.
+
+  To see how it works you might try
+
+      defmodule DynamicManager do
+        use Tarearbol.DynamicManager
+
+        def children_specs do
+          for i <- 1..10, do: {"foo_#{i}", DynamicManager}, into: %{}
+        end
+      end
+
+      {:ok, pid} = DynamicManager.start_link()
   """
 
   @doc """
@@ -50,6 +62,7 @@ defmodule Tarearbol.DynamicManager do
   @callback on_state_change(state :: :down | :up | :starting | :unknown) :: :ok | :restart
 
   defmodule State do
+    @moduledoc false
     use GenServer
 
     defstruct state: :down, children: %{}, manager: nil
@@ -111,8 +124,10 @@ defmodule Tarearbol.DynamicManager do
       @impl Tarearbol.DynamicManager
       def runner(),
         do:
-          Logger.info(
-            "runner was executed: state is [#{inspect(Tarearbol.DynamicManager.State.state())}]"
+          Logger.warn(
+            "runner was executed with state [#{inspect(Tarearbol.DynamicManager.State.state())}]\n" <>
+              "you want to override `runner/0` in your #{inspect(__MODULE__)}\n" <>
+              "to perform some actual work instead of printing this message"
           )
 
       defoverridable runner: 0
