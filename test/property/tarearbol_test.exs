@@ -1,4 +1,4 @@
-defmodule Property.Tarearbol.Test do
+defmodule Tarearbol.Property.Test do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
@@ -29,7 +29,7 @@ defmodule Property.Tarearbol.Test do
   #    do: quote do: one_of([maybe_leaf_list(), maybe_leaf_map(), maybe_leaf_keyword()])
 
   test "#ensure/2" do
-    check all term <- leaf(), max_runs: 100 do
+    check all(term <- leaf(), max_runs: 100) do
       assert {:ok, term} ==
                Tarearbol.Job.ensure(fn -> {:ok, term} end, accept_not_ok: false, attempts: 1)
     end

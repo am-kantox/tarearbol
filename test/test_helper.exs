@@ -21,10 +21,19 @@ end
 
 defmodule Tarearbol.Subscriber do
   use Envio.Subscriber, channels: [{Tarearbol.Publisher, :all}]
+
   def handle_envio(message, state) do
     {:noreply, state} = super(message, state)
     IO.inspect({message, state}, label: "Received")
     {:noreply, state}
+  end
+end
+
+defmodule DynamicManager do
+  use Tarearbol.DynamicManager
+
+  def children_specs do
+    %{"foo" => DynamicManager}
   end
 end
 
