@@ -136,14 +136,16 @@ defmodule Tarearbol.DynamicManager do
       @behaviour Tarearbol.DynamicManager
 
       @impl Tarearbol.DynamicManager
-      def runner(id),
-        do:
-          Logger.warn(
-            "runner for id[#{id}] was executed with state\n\n" <>
-              inspect(Tarearbol.DynamicManager.State.state()) <>
-              "\n\nyou want to override `runner/1` in your #{inspect(__MODULE__)}\n" <>
-              "to perform some actual work instead of printing this message"
-          )
+      def runner(id) do
+        Logger.warn(
+          "runner for id[#{id}] was executed with state\n\n" <>
+            inspect(Tarearbol.DynamicManager.State.state()) <>
+            "\n\nyou want to override `runner/1` in your #{inspect(__MODULE__)}\n" <>
+            "to perform some actual work instead of printing this message"
+        )
+
+        if Enum.random(1..3) == 1, do: :halt, else: :ok
+      end
 
       defoverridable runner: 1
 
