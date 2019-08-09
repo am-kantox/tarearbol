@@ -163,6 +163,10 @@ defmodule Tarearbol.DynamicManager do
 
         Supervisor.init(children, strategy: :rest_for_one)
       end
+
+      defdelegate put(id, runner), to: Tarearbol.InternalWorker
+      defdelegate del(id), to: Tarearbol.InternalWorker
+      defdelegate get(id), to: Tarearbol.InternalWorker
     end
   end
 end

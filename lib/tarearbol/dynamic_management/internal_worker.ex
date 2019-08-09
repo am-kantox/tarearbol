@@ -27,22 +27,21 @@ defmodule Tarearbol.InternalWorker do
   end
 
   @impl GenServer
-  def handle_call({:get, id}, _from, state),
-    do: {:reply, Tarearbol.DynamicManager.State.get(id), state}
-
-  @impl GenServer
   def handle_call({:put, id, runner}, _from, state),
     do: {:reply, do_put({id, runner}), state}
 
   @impl GenServer
-  def handle_call({:del, id}, _from, state) do
-    result = %{pid: pid} = Tarearbol.DynamicManager.State.get(id)
-    DynamicSupervisor.terminate_child(Tarearbol.DynamicSupervisor, pid)
-    {:reply, result, state}
-  end
+  def handle_call({:del, id}, _from, state),
+    do: {:reply, do_del(id), state}
+
+  @impl GenServer
+  def handle_call({:get, id}, _from, state),
+    do: {:reply, do_get(id), state}
 
   @spec do_put({id :: binary(), runner :: Tarearbol.DynamicManager.runner()}) :: pid()
   defp do_put({id, runner}) do
+    do_del(id)
+
     {:ok, pid} =
       DynamicSupervisor.start_child(
         Tarearbol.DynamicSupervisor,
@@ -52,4 +51,22 @@ defmodule Tarearbol.InternalWorker do
     Tarearbol.DynamicManager.State.put(id, %{pid: pid})
     pid
   end
+
+  @spec do_del(id :: binary()) :: map()
+  defp do_del(id) do
+    id
+    |> do_get()
+    |> case do
+      %{pid: pid} = found ->
+        Tarearbol.DynamicManager.State.del(id)
+        DynamicSupervisor.terminate_child(Tarearbol.DynamicSupervisor, pid)
+        found
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
+
+  @spec do_get(id :: binary()) :: map()
+  defp do_get(id), do: Tarearbol.DynamicManager.State.get(id, %{})
 end
