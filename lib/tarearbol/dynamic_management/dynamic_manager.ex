@@ -26,6 +26,9 @@ defmodule Tarearbol.DynamicManager do
   """
   @moduledoc since: "0.9.0"
 
+  @type runner ::
+          {module(), function(), list()} | {module(), function()} | module() | (() -> any())
+
   @doc """
   This function is called to retrieve the map of children with name as key
   and a workers as the value. Optionally the value might be `{m, f, a}` or
@@ -38,10 +41,7 @@ defmodule Tarearbol.DynamicManager do
   into the state under `children` key.
   """
   @doc since: "0.9.0"
-  @callback children_specs :: %{
-              required(binary()) =>
-                {module(), function(), list()} | {module(), function()} | module() | (() -> any())
-            }
+  @callback children_specs :: %{required(binary()) => runner()}
 
   @doc """
   The main function, doing all the job, supervised. This function will be used
