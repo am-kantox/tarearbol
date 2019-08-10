@@ -37,5 +37,4 @@ defmodule DynamicManager do
   end
 end
 
-# ExUnit.start()
 ExUnit.start(exclude: :skip)
