@@ -29,9 +29,10 @@ defmodule Tarearbol.DynamicManager.Test do
       end
     end
 
-    {:ok, _} = PingPong.start_link()
-    assert_receive "pong", 1_100
-    Process.sleep(100)
+    {:ok, pid} = PingPong.start_link()
+    assert_receive "pong", 2_000
+    Process.sleep(1_000)
     assert Tarearbol.DynamicManager.State.state().children == %{}
+    GenServer.stop(pid)
   end
 end
