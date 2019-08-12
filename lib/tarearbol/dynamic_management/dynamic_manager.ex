@@ -199,6 +199,13 @@ defmodule Tarearbol.DynamicManager do
           {Tarearbol.InternalWorker, [manager: __MODULE__]}
         ]
 
+        Logger.info(
+          "Starting #{inspect(__MODULE__)} with following children:\n" <>
+            "    State → #{inspect(state_module())}\n" <>
+            "    DynamicSupervisor → #{inspect(dynamic_supervisor_module())}\n" <>
+            "    InternalWorker → #{inspect(internal_worker_module())}"
+        )
+
         Supervisor.init(children, strategy: :rest_for_one)
       end
 
