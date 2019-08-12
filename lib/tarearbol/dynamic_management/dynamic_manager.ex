@@ -31,9 +31,9 @@ defmodule Tarearbol.DynamicManager do
   and a workers as the value.
 
   The value must be an enumerable with keys among:
-  - `:arg` (passed as second arg to `perform/2`, default nil)
-  - `:timeout` (time between iterations of `perform/2`, default 1 second)
-  - `:lull` (threshold to notify latency in performing, default 1.1 (the threshold is `:lull` times the `:timeout`))
+  - `:payload` (passed as second argument to `perform/2`, default `nil`)
+  - `:timeout` (time between iterations of `perform/2`, default `1` second)
+  - `:lull` (threshold to notify latency in performing, default `1.1` (the threshold is `:lull` times the `:timeout`))
 
   This function should not care about anything save for producing side effects.
 
@@ -47,14 +47,14 @@ defmodule Tarearbol.DynamicManager do
   The main function, doing all the job, supervised.
 
   It will be called with the child `id` as first argument and the
-  `arg` option to child spec as second argument (defaulting to nil,
+  `payload` option to child spec as second argument (defaulting to nil,
   can also be ignored if not needed).
 
   `perform/2` must return `:halt` if it wants to be killed or anything else to
   be treated as a result.
   """
   @doc since: "0.9.0"
-  @callback perform(id :: binary(), arg :: term()) :: any()
+  @callback perform(id :: binary(), payload :: term()) :: any()
 
   @doc """
   Declares an instance-wide callback to report state; if the startup process
@@ -178,7 +178,7 @@ defmodule Tarearbol.DynamicManager do
       @behaviour Tarearbol.DynamicManager
 
       @impl Tarearbol.DynamicManager
-      def perform(id, _arg) do
+      def perform(id, _payload) do
         Logger.warn(
           "perform for id[#{id}] was executed with state\n\n" <>
             inspect(state_module().state()) <>

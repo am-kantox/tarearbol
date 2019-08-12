@@ -8,7 +8,7 @@ defmodule Tarearbol.DynamicWorker do
   @spec start_link([
           {:manager, atom()}
           | {:id, any()}
-          | {:arg, term()}
+          | {:payload, term()}
           | {:timeout, non_neg_integer()}
           | {:lull, float()}
         ]) :: :ignore | {:error, any()} | {:ok, pid()}
@@ -20,7 +20,7 @@ defmodule Tarearbol.DynamicWorker do
         |> Map.new()
         |> Map.put_new(:timeout, @default_timeout)
         |> Map.put_new(:lull, @default_lull)
-        |> Map.put_new(:arg, nil)
+        |> Map.put_new(:payload, nil)
       )
 
   @impl GenServer
@@ -31,9 +31,9 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_info(:work, state) do
-    %{manager: manager, id: id, arg: arg, timeout: timeout, lull: lull} = state
+    %{manager: manager, id: id, payload: payload, timeout: timeout, lull: lull} = state
 
-    case manager.perform(id, arg) do
+    case manager.perform(id, payload) do
       :halt ->
         Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
         {:noreply, state}
