@@ -14,13 +14,13 @@ defmodule Tarearbol.DynamicManager.Test do
   end
 
   test "receives pong" do
-    defmodule PingPong do
+    defmodule PingPong1 do
       use Tarearbol.DynamicManager
 
       @pid :erlang.term_to_binary(self())
 
       def children_specs do
-        %{@pid => PingPong}
+        %{@pid => PingPong1}
       end
 
       def runner(i) do
@@ -29,10 +29,29 @@ defmodule Tarearbol.DynamicManager.Test do
       end
     end
 
-    {:ok, pid} = PingPong.start_link()
+    defmodule PingPong2 do
+      use Tarearbol.DynamicManager
+
+      @pid :erlang.term_to_binary(self())
+
+      def children_specs do
+        %{@pid => PingPong2}
+      end
+
+      def runner(i) do
+        send(:erlang.binary_to_term(i), "pong")
+        :halt
+      end
+    end
+
+    {:ok, pid1} = PingPong1.start_link()
+    {:ok, pid2} = PingPong2.start_link()
+    assert_receive "pong", 2_000
     assert_receive "pong", 2_000
     Process.sleep(1_000)
-    assert PingPong.State.state().children == %{}
-    GenServer.stop(pid)
+    assert PingPong1.state_module().state().children == %{}
+    assert PingPong2.state_module().state().children == %{}
+    GenServer.stop(pid2)
+    GenServer.stop(pid1)
   end
 end
