@@ -28,7 +28,7 @@ defmodule Tarearbol.Application do
   end
 
   @spec kill :: [:ok | {:error, :not_found | :dead}]
-  def kill(), do: for(child <- children(), do: kill(child))
+  def kill, do: for(child <- children(), do: kill(child))
 
   @spec kill(pid()) :: :ok | {:error, :not_found | :dead}
   def kill(child) when is_pid(child) do

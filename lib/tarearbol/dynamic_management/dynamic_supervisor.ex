@@ -2,8 +2,11 @@ defmodule Tarearbol.DynamicSupervisor do
   @moduledoc false
   use DynamicSupervisor
 
-  def start_link(opts \\ []),
-    do: DynamicSupervisor.start_link(__MODULE__, opts, name: __MODULE__)
+  @spec start_link(opts :: keyword()) :: Supervisor.on_start()
+  def start_link(opts \\ []) do
+    {manager, opts} = Keyword.pop(opts, :manager)
+    DynamicSupervisor.start_link(__MODULE__, opts, name: manager.dynamic_supervisor_module())
+  end
 
   @impl DynamicSupervisor
   def init(opts),

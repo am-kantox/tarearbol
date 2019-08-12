@@ -3,63 +3,66 @@ defmodule Tarearbol.InternalWorker do
   use GenServer
 
   def start_link(manager: manager),
-    do: GenServer.start_link(__MODULE__, [manager: manager], name: __MODULE__)
+    do:
+      GenServer.start_link(__MODULE__, [manager: manager], name: manager.internal_worker_module())
 
   @impl GenServer
   def init(opts), do: {:ok, opts, {:continue, :init}}
 
-  @spec put(id :: binary(), runner :: Tarearbol.DynamicManager.runner()) :: pid()
-  def put(id, runner), do: GenServer.call(__MODULE__, {:put, id, runner})
+  @spec put(module_name :: module(), id :: binary(), runner :: Tarearbol.DynamicManager.runner()) ::
+          pid()
+  def put(module_name, id, runner), do: GenServer.call(module_name, {:put, id, runner})
 
-  @spec del(id :: binary()) :: :ok
-  def del(id), do: GenServer.call(__MODULE__, {:del, id})
+  @spec del(module_name :: module(), id :: binary()) :: :ok
+  def del(module_name, id), do: GenServer.call(module_name, {:del, id})
 
-  @spec get(id :: binary()) :: :ok
-  def get(id), do: GenServer.call(__MODULE__, {:get, id})
+  @spec get(module_name :: module(), id :: binary()) :: :ok
+  def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
   @impl GenServer
   def handle_continue(:init, [manager: manager] = state) do
-    Enum.each(manager.children_specs(), &do_put/1)
+    Enum.each(manager.children_specs(), &do_put(manager, &1))
 
-    Tarearbol.DynamicManager.State.update_state(:started)
+    manager.state_module.update_state(:started)
     manager.on_state_change(:started)
     {:noreply, state}
   end
 
   @impl GenServer
-  def handle_call({:put, id, runner}, _from, state),
-    do: {:reply, do_put({id, runner}), state}
+  def handle_call({:put, id, runner}, _from, [manager: manager] = state),
+    do: {:reply, do_put(manager, {id, runner}), state}
 
   @impl GenServer
-  def handle_call({:del, id}, _from, state),
-    do: {:reply, do_del(id), state}
+  def handle_call({:del, id}, _from, [manager: manager] = state),
+    do: {:reply, do_del(manager, id), state}
 
   @impl GenServer
-  def handle_call({:get, id}, _from, state),
-    do: {:reply, do_get(id), state}
+  def handle_call({:get, id}, _from, [manager: manager] = state),
+    do: {:reply, do_get(manager, id), state}
 
-  @spec do_put({id :: binary(), runner :: Tarearbol.DynamicManager.runner()}) :: pid()
-  defp do_put({id, runner}) do
-    do_del(id)
+  @spec do_put(manager :: module(), {id :: binary(), runner :: Tarearbol.DynamicManager.runner()}) ::
+          pid()
+  defp do_put(manager, {id, runner}) do
+    do_del(manager, id)
 
     {:ok, pid} =
       DynamicSupervisor.start_child(
-        Tarearbol.DynamicSupervisor,
-        {Tarearbol.DynamicWorker, id: id, runner: runner}
+        manager.dynamic_supervisor_module(),
+        {Tarearbol.DynamicWorker, id: id, manager: manager, runner: runner}
       )
 
-    Tarearbol.DynamicManager.State.put(id, %{pid: pid})
+    manager.state_module().put(id, %{pid: pid})
     pid
   end
 
-  @spec do_del(id :: binary()) :: map()
-  defp do_del(id) do
-    id
-    |> do_get()
+  @spec do_del(manager :: module(), id :: binary()) :: map()
+  defp do_del(manager, id) do
+    manager
+    |> do_get(id)
     |> case do
       %{pid: pid} = found ->
-        Tarearbol.DynamicManager.State.del(id)
-        DynamicSupervisor.terminate_child(Tarearbol.DynamicSupervisor, pid)
+        manager.state_module().del(id)
+        DynamicSupervisor.terminate_child(manager.dynamic_supervisor_module(), pid)
         found
 
       _ ->
@@ -67,6 +70,6 @@ defmodule Tarearbol.InternalWorker do
     end
   end
 
-  @spec do_get(id :: binary()) :: map()
-  defp do_get(id), do: Tarearbol.DynamicManager.State.get(id, %{})
+  @spec do_get(manager :: module(), id :: binary()) :: map()
+  defp do_get(manager, id), do: manager.state_module().get(id, %{})
 end

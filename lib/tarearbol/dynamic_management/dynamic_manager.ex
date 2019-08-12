@@ -74,63 +74,94 @@ defmodule Tarearbol.DynamicManager do
   @doc since: "0.9.0"
   @callback on_state_change(state :: :down | :up | :starting | :unknown) :: :ok | :restart
 
-  defmodule State do
-    @moduledoc false
-    use GenServer
-
-    defstruct state: :down, children: %{}, manager: nil
-
-    @type t :: %{}
-
-    def start_link(manager: mod),
-      do: GenServer.start_link(__MODULE__, [manager: mod], name: __MODULE__)
-
-    @spec state :: State.t()
-    def state(), do: GenServer.call(__MODULE__, :state)
-
-    @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
-    def update_state(state), do: GenServer.cast(__MODULE__, {:update_state, state})
-
-    @spec put(id :: binary(), props :: map()) :: :ok
-    def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
-
-    @spec del(id :: binary()) :: :ok
-    def del(id), do: GenServer.cast(__MODULE__, {:del, id})
-
-    @spec get(id :: binary()) :: :ok
-    def get(id, default \\ nil), do: GenServer.call(__MODULE__, {:get, id, default})
-
-    @impl GenServer
-    def init(opts) do
-      state = struct(Tarearbol.DynamicManager.State, Keyword.put(opts, :state, :starting))
-      state.manager.on_state_change(:starting)
-      {:ok, state}
-    end
-
-    @impl GenServer
-    def handle_call(:state, _from, %__MODULE__{} = state),
-      do: {:reply, state, state}
-
-    @impl GenServer
-    def handle_call({:get, id, default}, _from, %__MODULE__{children: children} = state),
-      do: {:reply, Map.get(children, id, default), state}
-
-    @impl GenServer
-    def handle_cast({:put, id, props}, %__MODULE__{children: children} = state),
-      do: {:noreply, %{state | children: Map.put(children, id, props)}}
-
-    @impl GenServer
-    def handle_cast({:del, id}, %__MODULE__{children: children} = state),
-      do: {:noreply, %{state | children: Map.delete(children, id)}}
-
-    @impl GenServer
-    def handle_cast({:update_state, new_state}, %__MODULE__{} = state),
-      do: {:noreply, %{state | state: new_state}}
-  end
-
   @doc false
-  defmacro __using__(_opts) do
-    quote do
+  defmacro __using__(opts) do
+    quote location: :keep do
+      @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
+      @spec namespace :: module()
+      def namespace, do: @namespace
+
+      @spec child_mod(module :: module()) :: module()
+      defp child_mod(module) when is_atom(module),
+        do: child_mod(Module.split(module))
+
+      defp child_mod(module) when is_list(module),
+        do: Module.concat(@namespace, List.last(module))
+
+      @spec internal_worker_module :: module()
+      def internal_worker_module, do: child_mod(Tarearbol.InternalWorker)
+      @spec dynamic_supervisor_module :: module()
+      def dynamic_supervisor_module, do: child_mod(Tarearbol.DynamicSupervisor)
+
+      state_module_ast =
+        quote location: :keep do
+          @moduledoc false
+          use GenServer
+
+          defstruct state: :down, children: %{}, manager: nil
+
+          @type t :: %{}
+
+          def start_link(manager: manager),
+            do: GenServer.start_link(__MODULE__, [manager: manager], name: __MODULE__)
+
+          @spec state :: State.t()
+          def state, do: GenServer.call(__MODULE__, :state)
+
+          @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
+          def update_state(state),
+            do: GenServer.cast(__MODULE__, {:update_state, state})
+
+          @spec put(id :: binary(), props :: map()) :: :ok
+          def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
+
+          @spec del(id :: binary()) :: :ok
+          def del(id), do: GenServer.cast(__MODULE__, {:del, id})
+
+          @spec get(id :: binary()) :: :ok
+          def get(id, default \\ nil),
+            do: GenServer.call(__MODULE__, {:get, id, default})
+
+          @impl GenServer
+          def init(opts) do
+            state = struct(__MODULE__, Keyword.put(opts, :state, :starting))
+
+            state.manager.on_state_change(:starting)
+            {:ok, state}
+          end
+
+          @impl GenServer
+          def handle_call(:state, _from, %__MODULE__{} = state),
+            do: {:reply, state, state}
+
+          @impl GenServer
+          def handle_call(
+                {:get, id, default},
+                _from,
+                %__MODULE__{children: children} = state
+              ),
+              do: {:reply, Map.get(children, id, default), state}
+
+          @impl GenServer
+          def handle_cast(
+                {:put, id, props},
+                %__MODULE__{children: children} = state
+              ),
+              do: {:noreply, %{state | children: Map.put(children, id, props)}}
+
+          @impl GenServer
+          def handle_cast({:del, id}, %__MODULE__{children: children} = state),
+            do: {:noreply, %{state | children: Map.delete(children, id)}}
+
+          @impl GenServer
+          def handle_cast({:update_state, new_state}, %__MODULE__{} = state),
+            do: {:noreply, %{state | state: new_state}}
+        end
+
+      Module.create(Module.concat(@namespace, State), state_module_ast, __ENV__)
+      @spec state_module :: module()
+      def state_module, do: Module.concat(@namespace, State)
+
       require Logger
 
       @behaviour Tarearbol.DynamicManager
@@ -139,7 +170,7 @@ defmodule Tarearbol.DynamicManager do
       def runner(id) do
         Logger.warn(
           "runner for id[#{id}] was executed with state\n\n" <>
-            inspect(Tarearbol.DynamicManager.State.state()) <>
+            inspect(state_module().state()) <>
             "\n\nyou want to override `runner/1` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
         )
@@ -163,17 +194,17 @@ defmodule Tarearbol.DynamicManager do
       @impl Supervisor
       def init(opts) do
         children = [
-          {Tarearbol.DynamicManager.State, [manager: __MODULE__]},
-          {Tarearbol.DynamicSupervisor, opts},
+          {state_module(), [manager: __MODULE__]},
+          {Tarearbol.DynamicSupervisor, Keyword.put(opts, :manager, __MODULE__)},
           {Tarearbol.InternalWorker, [manager: __MODULE__]}
         ]
 
         Supervisor.init(children, strategy: :rest_for_one)
       end
 
-      defdelegate put(id, runner), to: Tarearbol.InternalWorker
-      defdelegate del(id), to: Tarearbol.InternalWorker
-      defdelegate get(id), to: Tarearbol.InternalWorker
+      def put(id, runner), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, runner)
+      def del(id), do: Tarearbol.InternalWorker.del(internal_worker_module(), id)
+      def get(id), do: Tarearbol.InternalWorker.get(internal_worker_module(), id)
     end
   end
 end

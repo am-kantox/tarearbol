@@ -24,9 +24,9 @@ defmodule Tarearbol.Cron do
 
   #############################################################################
 
-  def jobs(), do: GenServer.call(__MODULE__, :tasks)
+  def jobs, do: GenServer.call(__MODULE__, :tasks)
 
-  def clear!(), do: GenServer.call(__MODULE__, :clear)
+  def clear!, do: GenServer.call(__MODULE__, :clear)
 
   def put_task({{_mod, _fun, _args}, _time, _opts} = task),
     do: GenServer.call(__MODULE__, {:put_task, task})

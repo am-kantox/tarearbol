@@ -40,7 +40,7 @@ defmodule Tarearbol.Mixfile do
     [
       {:envio, "~> 0.4"},
       {:credo, "~> 1.0", only: :dev},
-      {:inch_ex, github: "rrrene/inch_ex", only: [:dev, :test]},
+      {:inch_ex, github: "rrrene/inch_ex", only: [:dev, :docs]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: :test},
