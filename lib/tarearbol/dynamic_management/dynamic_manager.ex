@@ -26,15 +26,14 @@ defmodule Tarearbol.DynamicManager do
   """
   @moduledoc since: "0.9.0"
 
-  @type runner ::
-          {module(), function(), list()} | {module(), function()} | module() | (binary() -> any())
-
   @doc """
   This function is called to retrieve the map of children with name as key
-  and a workers as the value. Optionally the value might be `{m, f, a}` or
-  `{m, f}`, or just `m` (the function name is assumed to be `:runner`) or
-  even a plain anonymous function of arity one. It will receive an `id` of
-  the item in question.
+  and a workers as the value.
+
+  The value must be an enumerable with keys among:
+  - `:arg` (passed as second arg to `perform/2`, default nil)
+  - `:timeout` (time between iterations of `perform/2`, default 1 second)
+  - `:lull` (threshold to notify latency in performing, default 1.1 (the threshold is `:lull` times the `:timeout`))
 
   This function should not care about anything save for producing side effects.
 
@@ -42,25 +41,20 @@ defmodule Tarearbol.DynamicManager do
   into the state under `children` key.
   """
   @doc since: "0.9.0"
-  @callback children_specs :: %{required(binary()) => runner()}
+  @callback children_specs :: %{required(binary()) => Enum.t()}
 
   @doc """
-  The main function, doing all the job, supervised. This function will be used
-  for children specs without `module()` given. Convenience function when most
-  of or even all the children have the similar behaviour.
+  The main function, doing all the job, supervised.
 
-  For instance, if one has forty two HTTP sources to get similar data from,
-  this function might be implemented instead of passing the same module many
-  times in call to `children_specs/0`.
+  It will be called with the child `id` as first argument and the
+  `arg` option to child spec as second argument (defaulting to nil,
+  can also be ignored if not needed).
 
-  Has default overridable implementation, which is a noop for those who manage
-  all the children manually.
-
-  Runner must return `:halt` if it wants to be killed or anything else to
+  `perform/2` must return `:halt` if it wants to be killed or anything else to
   be treated as a result.
   """
   @doc since: "0.9.0"
-  @callback runner(id :: binary()) :: any()
+  @callback perform(id :: binary(), arg :: term()) :: any()
 
   @doc """
   Declares an instance-wide callback to report state; if the startup process
@@ -72,7 +66,19 @@ defmodule Tarearbol.DynamicManager do
   that does nothing.
   """
   @doc since: "0.9.0"
-  @callback on_state_change(state :: :down | :up | :starting | :unknown) :: :ok | :restart
+  @callback handle_state_change(state :: :down | :up | :starting | :unknown) :: :ok | :restart
+
+  @doc """
+  Declares a callback to report slow process (when the scheduler cannot process
+  in a reasonable time).
+  """
+  @doc since: "0.9.5"
+  @callback handle_timeout(state :: map()) :: any()
+
+  defmodule Child do
+    @moduledoc false
+    defstruct [:pid, :value]
+  end
 
   @doc false
   defmacro __using__(opts) do
@@ -82,14 +88,14 @@ defmodule Tarearbol.DynamicManager do
       def namespace, do: @namespace
 
       @spec child_mod(module :: module()) :: module()
-      defp child_mod(module) when is_atom(module),
-        do: child_mod(Module.split(module))
+      defp child_mod(module) when is_atom(module), do: child_mod(Module.split(module))
 
       defp child_mod(module) when is_list(module),
         do: Module.concat(@namespace, List.last(module))
 
       @spec internal_worker_module :: module()
       def internal_worker_module, do: child_mod(Tarearbol.InternalWorker)
+
       @spec dynamic_supervisor_module :: module()
       def dynamic_supervisor_module, do: child_mod(Tarearbol.DynamicSupervisor)
 
@@ -109,8 +115,7 @@ defmodule Tarearbol.DynamicManager do
           def state, do: GenServer.call(__MODULE__, :state)
 
           @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
-          def update_state(state),
-            do: GenServer.cast(__MODULE__, {:update_state, state})
+          def update_state(state), do: GenServer.cast(__MODULE__, {:update_state, state})
 
           @spec put(id :: binary(), props :: map()) :: :ok
           def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
@@ -126,7 +131,7 @@ defmodule Tarearbol.DynamicManager do
           def init(opts) do
             state = struct(__MODULE__, Keyword.put(opts, :state, :starting))
 
-            state.manager.on_state_change(:starting)
+            state.manager.handle_state_change(:starting)
             {:ok, state}
           end
 
@@ -144,10 +149,16 @@ defmodule Tarearbol.DynamicManager do
 
           @impl GenServer
           def handle_cast(
-                {:put, id, props},
+                {:put, id, %Tarearbol.DynamicManager.Child{} = props},
                 %__MODULE__{children: children} = state
               ),
               do: {:noreply, %{state | children: Map.put(children, id, props)}}
+
+          @impl GenServer
+          def handle_cast({:put, id, props}, %__MODULE__{children: children} = state) do
+            children = Map.put(children, id, struct(Tarearbol.DynamicManager.Child, props))
+            {:noreply, %{state | children: children}}
+          end
 
           @impl GenServer
           def handle_cast({:del, id}, %__MODULE__{children: children} = state),
@@ -167,24 +178,29 @@ defmodule Tarearbol.DynamicManager do
       @behaviour Tarearbol.DynamicManager
 
       @impl Tarearbol.DynamicManager
-      def runner(id) do
+      def perform(id, _arg) do
         Logger.warn(
-          "runner for id[#{id}] was executed with state\n\n" <>
+          "perform for id[#{id}] was executed with state\n\n" <>
             inspect(state_module().state()) <>
-            "\n\nyou want to override `runner/1` in your #{inspect(__MODULE__)}\n" <>
+            "\n\nyou want to override `perform/2` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
         )
 
         if Enum.random(1..3) == 1, do: :halt, else: :ok
       end
 
-      defoverridable runner: 1
+      defoverridable perform: 2
 
       @impl Tarearbol.DynamicManager
-      def on_state_change(state),
+      def handle_state_change(state),
         do: Logger.info("[#{inspect(__MODULE__)}] state has changed to #{state}")
 
-      defoverridable on_state_change: 1
+      defoverridable handle_state_change: 1
+
+      @impl Tarearbol.DynamicManager
+      def handle_timeout(state), do: Logger.warn("A worker is too slow [#{inspect(state)}]")
+
+      defoverridable handle_timeout: 1
 
       use Supervisor
 
@@ -209,7 +225,7 @@ defmodule Tarearbol.DynamicManager do
         Supervisor.init(children, strategy: :rest_for_one)
       end
 
-      def put(id, runner), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, runner)
+      def put(id, opts), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, opts)
       def del(id), do: Tarearbol.InternalWorker.del(internal_worker_module(), id)
       def get(id), do: Tarearbol.InternalWorker.get(internal_worker_module(), id)
     end
