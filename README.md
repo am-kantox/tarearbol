@@ -1,6 +1,6 @@
 # Tarearbol
 
-[![Build Status](https://travis-ci.org/am-kantox/tarearbol.svg?branch=master)](https://travis-ci.org/am-kantox/tarearbol)
+[![CircleCI](https://circleci.com/gh/am-kantox/tarearbol.svg?style=svg)](https://circleci.com/gh/am-kantox/tarearbol)
 **Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more…**
 
 ## Installation
@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.6"}
+    {:tarearbol, "~> 0.9"}
   ]
 end
 ```
