@@ -20,10 +20,10 @@ defmodule Tarearbol.DynamicManager.Test do
       @pid :erlang.term_to_binary(self())
 
       def children_specs do
-        %{@pid => PingPong1}
+        %{@pid => []}
       end
 
-      def runner(i) do
+      def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
         :halt
       end
@@ -35,10 +35,10 @@ defmodule Tarearbol.DynamicManager.Test do
       @pid :erlang.term_to_binary(self())
 
       def children_specs do
-        %{@pid => PingPong2}
+        %{@pid => []}
       end
 
-      def runner(i) do
+      def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
         :halt
       end
