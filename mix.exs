@@ -4,7 +4,6 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @app_name "Tarearbol"
   @version "0.9.6"
 
   def project do
@@ -85,13 +84,16 @@ defmodule Tarearbol.Mixfile do
 
   defp docs do
     [
-      main: @app_name,
+      main: "intro",
       source_ref: "v#{@version}",
       canonical: "http://hexdocs.pm/#{@app}",
       logo: "stuff/images/logo.png",
       source_url: "https://github.com/am-kantox/#{@app}",
+      assets: "stuff/images",
       extras: [
-        "stuff/pages/intro.md"
+        "stuff/pages/intro.md",
+        "stuff/pages/task_management.md",
+        "stuff/pages/dynamic_workers_management.md"
       ],
       groups_for_modules: [
         # Tarearbol
