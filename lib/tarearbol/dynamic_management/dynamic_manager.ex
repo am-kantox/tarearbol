@@ -18,7 +18,7 @@ defmodule Tarearbol.DynamicManager do
         use Tarearbol.DynamicManager
 
         def children_specs do
-          for i <- 1..10, do: {"foo_#{i}", DynamicManager}, into: %{}
+          for i <- 1..10, do: {"foo_#{i}", []}, into: %{}
         end
       end
 
