@@ -18,5 +18,4 @@ jobs:
         MIX_ENV=ci mix local.hex --force
         MIX_ENV=ci mix deps.get
     - name: Run All Tests
-      run: |
-        MIX_ENV=ci mix test
+      run: MIX_ENV=ci mix test
