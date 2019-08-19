@@ -78,7 +78,6 @@ defmodule Tarearbol.Cron do
     end)
   end
 
-  # FIXME [AM] REFACTOR
   defp tasks!(table) do
     case :dets.lookup(table, :tasks) do
       {:error, _reason} ->

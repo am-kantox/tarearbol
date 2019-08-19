@@ -26,6 +26,7 @@ defmodule Tarearbol.Utils do
   - `:medium` → `100`;
   - `:infinity` → `-1`, `:attempts` only.
   """
+  # credo:disable-for-lines:16 Credo.Check.Refactor.CyclomaticComplexity
   @spec interval(interval(), list()) :: integer()
   def interval(input, opts \\ []) do
     case input do

@@ -30,7 +30,7 @@ defmodule Tarearbol.Errand do
       Process.delete(:job)
 
       cond do
-        # FIXME deal with attempts above and rerun unless success
+        #! TODO deal with attempts above and rerun unless success
         # opts[:sidekiq] -> run_in(job, sidekiq_interval(waiting_time), opts)
         opts[:next_run] -> run_at(job, opts[:next_run], opts)
         opts[:repeatedly] -> run_in(job, interval, opts)
@@ -44,10 +44,18 @@ defmodule Tarearbol.Errand do
     at the specified `%Time{}`.
   """
   @spec run_at(
-          (() -> any()) | {module(), atom(), list()},
-          DateTime.t() | Time.t() | String.t(),
+          Tarearbol.Job.job(),
+          %{
+            :__struct__ => DateTime | Time,
+            :calendar => atom(),
+            :hour => any(),
+            :microsecond => any(),
+            :minute => any(),
+            :second => any(),
+            any() => any()
+          },
           Keyword.t()
-        ) :: Task.t()
+        ) :: %Task{:owner => pid(), :pid => nil | pid(), :ref => reference()}
   def run_at(job, at, opts \\ opts())
 
   def run_at(job, %DateTime{} = at, opts) do
