@@ -19,6 +19,7 @@ jobs:
         MIX_ENV=ci mix local.rebar --force
         MIX_ENV=ci mix local.hex --force
         MIX_ENV=ci mix deps.get
+        mkdir .dialyzer/plts
     - name: Run All Tests
       run: |
         MIX_ENV=ci mix quality
