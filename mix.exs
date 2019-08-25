@@ -38,7 +38,7 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:envio, "~> 0.4"},
-      {:credo, "~> 1.0", only: :dev},
+      {:credo, "~> 1.0", only: [:dev, :ci]},
       # {:inch_ex, github: "rrrene/inch_ex", only: [:dev, :docs]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
       {:ex_doc, "~> 0.11", only: :dev},
