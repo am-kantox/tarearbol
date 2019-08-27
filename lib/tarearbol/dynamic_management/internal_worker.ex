@@ -15,7 +15,7 @@ defmodule Tarearbol.InternalWorker do
   @spec del(module_name :: module(), id :: binary()) :: :ok
   def del(module_name, id), do: GenServer.call(module_name, {:del, id})
 
-  @spec get(module_name :: module(), id :: binary()) :: :ok
+  @spec get(module_name :: module(), id :: binary()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
   @impl GenServer

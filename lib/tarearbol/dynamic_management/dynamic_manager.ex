@@ -25,6 +25,20 @@ defmodule Tarearbol.DynamicManager do
       {:ok, pid} = DynamicManager.start_link()
 
   The above would spawn `10` children with IDs `"foo1".."foo10"`.
+
+  ---
+
+  `DynamicManager` also allows dynamic workers management. It exports three
+  functions
+
+      @spec put(id :: binary(), opts :: Enum.t()) :: pid()
+      @spec del(id :: binary()) :: :ok
+      @spec get(id :: binary()) :: Enum.t()
+
+  The semantics of `put/2` arguments is the same as a single `child_spec`,
+  `del/1` and `get/1` receive the unique ID of the child and shutdown it or
+  return it’s payload respectively.
+
   """
   @moduledoc since: "0.9.0"
 
