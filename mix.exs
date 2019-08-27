@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.9.6"
+  @version "0.10.0"
 
   def project do
     [
@@ -37,9 +37,8 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:envio, "~> 0.4"},
+      {:envio, "~> 0.5"},
       {:credo, "~> 1.0", only: [:dev, :ci]},
-      # {:inch_ex, github: "rrrene/inch_ex", only: [:dev, :docs]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: [:test, :ci]},
