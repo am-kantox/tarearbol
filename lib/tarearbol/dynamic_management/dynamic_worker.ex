@@ -12,16 +12,23 @@ defmodule Tarearbol.DynamicWorker do
           | {:timeout, non_neg_integer()}
           | {:lull, float()}
         ]) :: :ignore | {:error, any()} | {:ok, pid()}
-  def start_link(opts),
-    do:
-      GenServer.start_link(
-        __MODULE__,
-        opts
-        |> Map.new()
-        |> Map.put_new(:timeout, @default_timeout)
-        |> Map.put_new(:lull, @default_lull)
-        |> Map.put_new(:payload, nil)
+  def start_link(opts) do
+    opts =
+      opts
+      |> Map.new()
+      |> Map.put_new(:timeout, @default_timeout)
+      |> Map.put_new(:lull, @default_lull)
+      |> Map.put_new(:payload, nil)
+
+    {name, opts} =
+      Map.pop(
+        opts,
+        :name,
+        {:via, Registry, {Module.concat(opts.manager.namespace(), Registry), opts.id}}
       )
+
+    GenServer.start_link(__MODULE__, opts, name: name)
+  end
 
   @impl GenServer
   def init(opts) do

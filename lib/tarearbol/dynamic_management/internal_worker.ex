@@ -43,13 +43,16 @@ defmodule Tarearbol.InternalWorker do
   defp do_put(manager, {id, opts}) do
     do_del(manager, id)
 
+    name = {:via, Registry, {Module.concat(manager.namespace(), Registry), id}}
+
     {:ok, pid} =
       DynamicSupervisor.start_child(
         manager.dynamic_supervisor_module(),
-        {Tarearbol.DynamicWorker, opts |> Map.new() |> Map.merge(%{id: id, manager: manager})}
+        {Tarearbol.DynamicWorker,
+         opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
       )
 
-    manager.state_module().put(id, %{pid: pid})
+    manager.state_module().put(id, %{pid: name})
     pid
   end
 
@@ -58,10 +61,20 @@ defmodule Tarearbol.InternalWorker do
     manager
     |> do_get(id)
     |> case do
-      %{pid: pid} = found ->
+      %{pid: {:via, Registry, {_, ^id}}} = found ->
         manager.state_module().del(id)
-        DynamicSupervisor.terminate_child(manager.dynamic_supervisor_module(), pid)
-        found
+
+        case Registry.lookup(Module.concat(manager.namespace(), Registry), id) do
+          [{pid, _}] ->
+            DynamicSupervisor.terminate_child(manager.dynamic_supervisor_module(), pid)
+            found
+
+          [] ->
+            {:error, :not_registered}
+
+          other ->
+            {:error, {:unexpected, other}}
+        end
 
       _ ->
         {:error, :not_found}

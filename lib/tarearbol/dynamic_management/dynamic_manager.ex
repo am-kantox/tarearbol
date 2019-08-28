@@ -226,6 +226,7 @@ defmodule Tarearbol.DynamicManager do
       @impl Supervisor
       def init(opts) do
         children = [
+          {Registry, [keys: :unique, name: Module.concat(@namespace, Registry)]},
           {state_module(), [manager: __MODULE__]},
           {Tarearbol.DynamicSupervisor, Keyword.put(opts, :manager, __MODULE__)},
           {Tarearbol.InternalWorker, [manager: __MODULE__]}

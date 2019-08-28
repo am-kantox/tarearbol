@@ -9,19 +9,11 @@ defmodule Tarearbol.DynamicManager.Test do
     :ok
   end
 
-  test "responds with :not_found on a non-existing child" do
-    # assert {:error, :not_found} == Tarearbol.Application.kill(self())
-  end
-
   test "receives pong" do
     defmodule PingPong1 do
       use Tarearbol.DynamicManager
-
       @pid :erlang.term_to_binary(self())
-
-      def children_specs do
-        %{@pid => []}
-      end
+      def children_specs, do: %{@pid => [timeout: 100]}
 
       def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
@@ -31,12 +23,8 @@ defmodule Tarearbol.DynamicManager.Test do
 
     defmodule PingPong2 do
       use Tarearbol.DynamicManager
-
       @pid :erlang.term_to_binary(self())
-
-      def children_specs do
-        %{@pid => []}
-      end
+      def children_specs, do: %{@pid => [timeout: 100]}
 
       def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
@@ -46,12 +34,34 @@ defmodule Tarearbol.DynamicManager.Test do
 
     {:ok, pid1} = PingPong1.start_link()
     {:ok, pid2} = PingPong2.start_link()
-    assert_receive "pong", 2_000
-    assert_receive "pong", 2_000
-    Process.sleep(1_000)
+    assert_receive "pong", 200
+    assert_receive "pong", 200
+    Process.sleep(100)
     assert PingPong1.state_module().state().children == %{}
     assert PingPong2.state_module().state().children == %{}
     GenServer.stop(pid2)
     GenServer.stop(pid1)
+  end
+
+  test "tracks crashes" do
+    defmodule PingPong3 do
+      use Tarearbol.DynamicManager
+      @pid :erlang.term_to_binary(self())
+      def children_specs, do: %{@pid => [timeout: 100]}
+
+      def perform(i, _),
+        do: send(:erlang.binary_to_term(i), "pong")
+    end
+
+    {:ok, pid3} = PingPong3.start_link()
+    assert_receive "pong", 200
+    PingPong3.put(:erlang.term_to_binary(self()), timeout: 100)
+    assert_receive "pong", 200
+    PingPong3.put(:erlang.term_to_binary(self()), timeout: 100)
+    assert map_size(PingPong3.state_module().state().children) == 1
+    assert_receive "pong", 200
+    PingPong3.del(:erlang.term_to_binary(self()))
+    assert map_size(PingPong3.state_module().state().children) == 0
+    GenServer.stop(pid3)
   end
 end
