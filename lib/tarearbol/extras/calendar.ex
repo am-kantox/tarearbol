@@ -99,6 +99,15 @@ defmodule Tarearbol.Calendar do
     |> beginning_of(n * @days_in_week, :day)
   end
 
+  ################################  DAY OF WEEK  ###############################
+
+  def beginning_of(dt, dow, :day_of_week) when is_integer(dow) and dow > 0 and dow < 8 do
+    dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
+    diff = dow - dt.calendar.day_of_week(dt.year, dt.month, dt.day)
+
+    beginning_of(dt, if(diff > 0, do: diff, else: 7 + diff), :day)
+  end
+
   ###################################  DAY  ####################################
 
   def beginning_of(dt, 0, :day) do
@@ -200,6 +209,10 @@ defmodule Tarearbol.Calendar do
   end
 
   ##################################  GENERICS  ################################
+
+  def beginning_of(_dt, count, period)
+      when period not in [:year, :month, :week, :day, :hour, :minute],
+      do: {:error, {period, count}}
 
   def beginning_of(dt, count, period) when count > 1 do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
