@@ -3,25 +3,67 @@ defmodule Tarearbol.Crontab do
 
   @type t :: %__MODULE__{}
   defstruct [:minute, :hour, :day, :month, :day_of_week]
-  @prefix "dt."
+
+  # @prefix "dt."
+  @prefix ""
 
   @spec next(dt :: nil | DateTime.t(), input :: binary()) :: DateTime.t()
   def next(dt \\ nil, input) do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
 
     with %Tarearbol.Crontab{} = ct <- parse(input),
-         formula <- Tarearbol.Crontab.formula(ct),
-         formula <- Code.string_to_quoted(formula) do
-      dt
-      |> Stream.iterate(&DateTime.add(&1, 60, :second))
-      |> Stream.drop_while(fn dt ->
-        case Code.eval_quoted(formula, [dt: date_time_with_day_of_week(dt)], []) do
-          {{:ok, false}, _} -> true
-          {{:ok, true}, [dt: _dt]} -> false
-        end
-      end)
+         %Tarearbol.Crontab{} = ct <- quote_it(ct) do
+      for(
+        year <- [dt.year, dt.year + 1],
+        month <- 1..dt.calendar.months_in_year(year),
+        day <- 1..dt.calendar.days_in_month(year, month),
+        day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+        hour <- 0..23,
+        minute <- 0..59,
+        dt_to_check <- [
+          %DateTime{
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute,
+            second: 0,
+            microsecond: {0, 0},
+            time_zone: dt.time_zone,
+            zone_abbr: dt.zone_abbr,
+            utc_offset: dt.utc_offset,
+            std_offset: dt.std_offset,
+            calendar: dt.calendar
+          }
+        ],
+        DateTime.compare(dt, dt_to_check) in [:eq, :lt],
+        formula_check(ct.month, month: month),
+        formula_check(ct.day, day: day),
+        formula_check(ct.day_of_week, day_of_week: day_of_week),
+        formula_check(ct.hour, hour: hour),
+        formula_check(ct.minute, minute: minute),
+        do: IO.inspect(dt_to_check)
+      )
+      |> Stream.map(& &1)
       |> Enum.take(1)
     end
+  end
+
+  @spec quote_it(input :: Tarearbol.Crontab.t()) :: Tarearbol.Crontab.t()
+  def quote_it(%Tarearbol.Crontab{
+        minute: minute,
+        hour: hour,
+        day: day,
+        month: month,
+        day_of_week: day_of_week
+      }) do
+    %Tarearbol.Crontab{
+      minute: Code.string_to_quoted(minute),
+      hour: Code.string_to_quoted(hour),
+      day: Code.string_to_quoted(day),
+      month: Code.string_to_quoted(month),
+      day_of_week: Code.string_to_quoted(day_of_week)
+    }
   end
 
   @spec parse(input :: binary()) :: Tarearbol.Crontab.t()
@@ -54,20 +96,6 @@ defmodule Tarearbol.Crontab do
 
   """
 
-  def parse("@yearly"), do: parse("0 0 1 1 *")
-
-  def parse("@monthly"), do: parse("0 0 1 * *")
-
-  def parse("@weekly"), do: parse("0 0 * * 1")
-
-  def parse("@daily"), do: parse("0 0 * * *")
-
-  def parse("@hourly"), do: parse("0 * * * *")
-
-  def parse("@reboot"), do: raise("Not supported")
-
-  def parse("@annually"), do: raise("Not supported")
-
   def parse(input) when is_binary(input),
     do: do_parse(input, {[:hour, :day, :month, :day_of_week], :minute, "", %{}})
 
@@ -75,6 +103,21 @@ defmodule Tarearbol.Crontab do
 
   @spec do_parse(input :: binary(), {list[atom()], atom(), binary(), map()}) ::
           Tarearbol.Crontab.t()
+
+  defp do_parse("@yearly", acc), do: do_parse("0 0 1 1 *", acc)
+
+  defp do_parse("@monthly", acc), do: do_parse("0 0 1 * *", acc)
+
+  defp do_parse("@weekly", acc), do: do_parse("0 0 * * 1", acc)
+
+  defp do_parse("@daily", acc), do: do_parse("0 0 * * *", acc)
+
+  defp do_parse("@hourly", acc), do: do_parse("0 * * * *", acc)
+
+  defp do_parse("@reboot", acc), do: raise("Not supported")
+
+  defp do_parse("@annually", acc), do: raise("Not supported")
+
   defp do_parse("", {[], frac, acc, result}) do
     map = for {k, v} <- Map.put(result, frac, acc), into: %{}, do: {k, parts(k, v)}
     struct(Tarearbol.Crontab, map)
@@ -239,12 +282,20 @@ defmodule Tarearbol.Crontab do
   end
 
   @spec date_time_with_day_of_week(dt :: nil | DateTime.t()) :: map()
-  def date_time_with_day_of_week(dt \\ nil) do
+  defp date_time_with_day_of_week(dt \\ nil) do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
 
     dt
     |> Map.from_struct()
     |> Map.put_new(:day_of_week, dt.calendar.day_of_week(dt.year, dt.month, dt.day))
+  end
+
+  @spec formula_check(formula :: binary(), binding :: keyword()) :: boolean()
+  defp formula_check(formula, binding) do
+    case Code.eval_quoted(formula, binding, []) do
+      {{:ok, false}, _} -> false
+      {{:ok, true}, _} -> true
+    end
   end
 
   defimpl Enumerable do
