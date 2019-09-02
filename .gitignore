@@ -25,6 +25,6 @@ erl_crash.dump
 # vscode LS data
 /.elixir_ls/
 
-/.dialyzer/plts/
+/.dialyzer/plts/*.plt*
 
 /.vscode/
