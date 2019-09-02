@@ -12,40 +12,53 @@ defmodule Tarearbol.Crontab do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
 
     with %Tarearbol.Crontab{} = ct <- parse(input),
-         %Tarearbol.Crontab{} = ct <- quote_it(ct) do
-      for(
-        year <- [dt.year, dt.year + 1],
-        month <- 1..dt.calendar.months_in_year(year),
-        day <- 1..dt.calendar.days_in_month(year, month),
-        day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
-        hour <- 0..23,
-        minute <- 0..59,
-        dt_to_check <- [
-          %DateTime{
-            year: year,
-            month: month,
-            day: day,
-            hour: hour,
-            minute: minute,
-            second: 0,
-            microsecond: {0, 0},
-            time_zone: dt.time_zone,
-            zone_abbr: dt.zone_abbr,
-            utc_offset: dt.utc_offset,
-            std_offset: dt.std_offset,
-            calendar: dt.calendar
-          }
-        ],
-        DateTime.compare(dt, dt_to_check) in [:eq, :lt],
-        formula_check(ct.month, month: month),
-        formula_check(ct.day, day: day),
-        formula_check(ct.day_of_week, day_of_week: day_of_week),
-        formula_check(ct.hour, hour: hour),
-        formula_check(ct.minute, minute: minute),
-        do: IO.inspect(dt_to_check)
-      )
-      |> Stream.map(& &1)
-      |> Enum.take(1)
+         %Tarearbol.Crontab{} = ct <- IO.inspect(quote_it(ct)) do
+      started = :erlang.monotonic_time(:microsecond)
+
+      try do
+        for(
+          year <- [dt.year, dt.year + 1],
+          month <- 1..dt.calendar.months_in_year(year),
+          year > dt.year || month >= dt.month,
+          day <- 1..dt.calendar.days_in_month(year, month),
+          year > dt.year || month > dt.month || day >= dt.day,
+          day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+          hour <- 0..23,
+          year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
+          minute <- 0..59,
+          year > dt.year || month > dt.month || day > dt.day || hour > dt.hour ||
+            minute >= dt.minute,
+          formula_check(ct.month, month: month),
+          formula_check(ct.day, day: day),
+          formula_check(ct.day_of_week, day_of_week: day_of_week),
+          formula_check(ct.hour, hour: hour),
+          formula_check(ct.minute, minute: minute),
+          do:
+            throw(
+              IO.inspect(%DateTime{
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: 0,
+                microsecond: {0, 0},
+                time_zone: dt.time_zone,
+                zone_abbr: dt.zone_abbr,
+                utc_offset: dt.utc_offset,
+                std_offset: dt.std_offset,
+                calendar: dt.calendar
+              })
+            )
+        )
+      catch
+        result ->
+          IO.inspect(:erlang.monotonic_time(:microsecond) - started, label: "Spent in fun")
+          result
+      end
+
+      # |> Stream.map(& &1)
+      # |> Enum.take(1)
     end
   end
 
@@ -292,10 +305,15 @@ defmodule Tarearbol.Crontab do
 
   @spec formula_check(formula :: binary(), binding :: keyword()) :: boolean()
   defp formula_check(formula, binding) do
+    # started = :erlang.monotonic_time(:microsecond)
+
     case Code.eval_quoted(formula, binding, []) do
       {{:ok, false}, _} -> false
       {{:ok, true}, _} -> true
     end
+
+    # IO.inspect(:erlang.monotonic_time(:microsecond) - started, label: inspect(binding))
+    # result
   end
 
   defimpl Enumerable do
