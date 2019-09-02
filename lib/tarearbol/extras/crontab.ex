@@ -8,8 +8,9 @@ defmodule Tarearbol.Crontab do
   @prefix ""
 
   @spec next(dt :: nil | DateTime.t(), input :: binary()) :: DateTime.t()
-  def next(dt \\ nil, input) do
+  def next(dt \\ nil, input, opts \\ []) do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
+    precision = Keyword.get(opts, :precision, :second)
 
     with %Tarearbol.Crontab{} = ct <- parse(input),
          %Tarearbol.Crontab{} = ct <- quote_it(ct) do
@@ -39,7 +40,7 @@ defmodule Tarearbol.Crontab do
               hour: hour,
               minute: minute,
               second: 0,
-              microsecond: {0, 0},
+              microsecond: dt.microsecond,
               time_zone: dt.time_zone,
               zone_abbr: dt.zone_abbr,
               utc_offset: dt.utc_offset,
@@ -48,7 +49,12 @@ defmodule Tarearbol.Crontab do
             })
         )
       catch
-        result -> result
+        result ->
+          [
+            origin: DateTime.truncate(dt, precision),
+            next: DateTime.truncate(result, precision),
+            seconds: DateTime.diff(result, dt, precision)
+          ]
       end
     end
   end
