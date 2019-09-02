@@ -12,53 +12,44 @@ defmodule Tarearbol.Crontab do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
 
     with %Tarearbol.Crontab{} = ct <- parse(input),
-         %Tarearbol.Crontab{} = ct <- IO.inspect(quote_it(ct)) do
-      started = :erlang.monotonic_time(:microsecond)
-
+         %Tarearbol.Crontab{} = ct <- quote_it(ct) do
       try do
         for(
           year <- [dt.year, dt.year + 1],
           month <- 1..dt.calendar.months_in_year(year),
           year > dt.year || month >= dt.month,
+          ct.month.eval.(month: month),
           day <- 1..dt.calendar.days_in_month(year, month),
           year > dt.year || month > dt.month || day >= dt.day,
+          ct.day.eval.(day: day),
           day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+          ct.day_of_week.eval.(day_of_week: day_of_week),
           hour <- 0..23,
           year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
+          ct.hour.eval.(hour: hour),
           minute <- 0..59,
           year > dt.year || month > dt.month || day > dt.day || hour > dt.hour ||
             minute >= dt.minute,
-          formula_check(ct.month, month: month),
-          formula_check(ct.day, day: day),
-          formula_check(ct.day_of_week, day_of_week: day_of_week),
-          formula_check(ct.hour, hour: hour),
-          formula_check(ct.minute, minute: minute),
+          ct.minute.eval.(minute: minute),
           do:
-            throw(
-              IO.inspect(%DateTime{
-                year: year,
-                month: month,
-                day: day,
-                hour: hour,
-                minute: minute,
-                second: 0,
-                microsecond: {0, 0},
-                time_zone: dt.time_zone,
-                zone_abbr: dt.zone_abbr,
-                utc_offset: dt.utc_offset,
-                std_offset: dt.std_offset,
-                calendar: dt.calendar
-              })
-            )
+            throw(%DateTime{
+              year: year,
+              month: month,
+              day: day,
+              hour: hour,
+              minute: minute,
+              second: 0,
+              microsecond: {0, 0},
+              time_zone: dt.time_zone,
+              zone_abbr: dt.zone_abbr,
+              utc_offset: dt.utc_offset,
+              std_offset: dt.std_offset,
+              calendar: dt.calendar
+            })
         )
       catch
-        result ->
-          IO.inspect(:erlang.monotonic_time(:microsecond) - started, label: "Spent in fun")
-          result
+        result -> result
       end
-
-      # |> Stream.map(& &1)
-      # |> Enum.take(1)
     end
   end
 
@@ -71,11 +62,11 @@ defmodule Tarearbol.Crontab do
         day_of_week: day_of_week
       }) do
     %Tarearbol.Crontab{
-      minute: Code.string_to_quoted(minute),
-      hour: Code.string_to_quoted(hour),
-      day: Code.string_to_quoted(day),
-      month: Code.string_to_quoted(month),
-      day_of_week: Code.string_to_quoted(day_of_week)
+      minute: Formulae.compile(minute),
+      hour: Formulae.compile(hour),
+      day: Formulae.compile(day),
+      month: Formulae.compile(month),
+      day_of_week: Formulae.compile(day_of_week)
     }
   end
 
@@ -127,9 +118,9 @@ defmodule Tarearbol.Crontab do
 
   defp do_parse("@hourly", acc), do: do_parse("0 * * * *", acc)
 
-  defp do_parse("@reboot", acc), do: raise("Not supported")
+  defp do_parse("@reboot", _acc), do: raise("Not supported")
 
-  defp do_parse("@annually", acc), do: raise("Not supported")
+  defp do_parse("@annually", _acc), do: raise("Not supported")
 
   defp do_parse("", {[], frac, acc, result}) do
     map = for {k, v} <- Map.put(result, frac, acc), into: %{}, do: {k, parts(k, v)}
@@ -292,28 +283,6 @@ defmodule Tarearbol.Crontab do
       {:error, reasons} -> {:error, reasons}
       {:ok, result} -> result |> Enum.reverse() |> Enum.join(" && ")
     end
-  end
-
-  @spec date_time_with_day_of_week(dt :: nil | DateTime.t()) :: map()
-  defp date_time_with_day_of_week(dt \\ nil) do
-    dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
-
-    dt
-    |> Map.from_struct()
-    |> Map.put_new(:day_of_week, dt.calendar.day_of_week(dt.year, dt.month, dt.day))
-  end
-
-  @spec formula_check(formula :: binary(), binding :: keyword()) :: boolean()
-  defp formula_check(formula, binding) do
-    # started = :erlang.monotonic_time(:microsecond)
-
-    case Code.eval_quoted(formula, binding, []) do
-      {{:ok, false}, _} -> false
-      {{:ok, true}, _} -> true
-    end
-
-    # IO.inspect(:erlang.monotonic_time(:microsecond) - started, label: inspect(binding))
-    # result
   end
 
   defimpl Enumerable do
