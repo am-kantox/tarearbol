@@ -149,7 +149,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that temporarily pushes a job, use `push/3`.
   """
-  @spec push(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
+  @spec push!(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
   def push!(name, runner, schedule) do
     File.write!(config_file(), [{name, runner, schedule} | jobs()])
     push(name, runner, schedule)
