@@ -7,7 +7,7 @@ defmodule Tarearbol.Crontab do
   # @prefix "dt."
   @prefix ""
 
-  @spec next(dt :: nil | DateTime.t(), input :: binary()) :: DateTime.t()
+  @spec next(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) :: DateTime.t()
   def next(dt \\ nil, input, opts \\ []) do
     dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
     precision = Keyword.get(opts, :precision, :second)
@@ -30,7 +30,7 @@ defmodule Tarearbol.Crontab do
           ct.hour.eval.(hour: hour),
           minute <- 0..59,
           year > dt.year || month > dt.month || day > dt.day || hour > dt.hour ||
-            minute >= dt.minute,
+            minute > dt.minute,
           ct.minute.eval.(minute: minute),
           do:
             throw(%DateTime{
@@ -51,9 +51,9 @@ defmodule Tarearbol.Crontab do
       catch
         result ->
           [
-            origin: DateTime.truncate(dt, precision),
-            next: DateTime.truncate(result, precision),
-            seconds: DateTime.diff(result, dt, precision)
+            {:origin, DateTime.truncate(dt, precision)},
+            {:next, DateTime.truncate(result, precision)},
+            {precision, DateTime.diff(result, dt, precision)}
           ]
       end
     end

@@ -56,7 +56,7 @@ defmodule Tarearbol.InternalWorker do
     pid
   end
 
-  @spec do_del(manager :: module(), id :: binary()) :: map()
+  @spec do_del(manager :: module(), id :: binary()) :: map() | {:error, :not_found}
   defp do_del(manager, id) do
     manager
     |> do_get(id)

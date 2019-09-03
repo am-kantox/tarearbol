@@ -2,8 +2,11 @@ defmodule Tarearbol.DynamicWorker do
   @moduledoc false
   use GenServer
 
-  @default_timeout 1_000
-  @default_lull 1.1
+  @default_opts %{
+    timeout: 1_000,
+    lull: 1.1,
+    payload: nil
+  }
 
   @spec start_link([
           {:manager, atom()}
@@ -13,12 +16,7 @@ defmodule Tarearbol.DynamicWorker do
           | {:lull, float()}
         ]) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(opts) do
-    opts =
-      opts
-      |> Map.new()
-      |> Map.put_new(:timeout, @default_timeout)
-      |> Map.put_new(:lull, @default_lull)
-      |> Map.put_new(:payload, nil)
+    opts = Map.merge(@default_opts, Map.new(opts))
 
     {name, opts} =
       Map.pop(
@@ -45,10 +43,21 @@ defmodule Tarearbol.DynamicWorker do
         Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
         {:noreply, state}
 
+      {:replace, id, payload} ->
+        Tarearbol.InternalWorker.put(manager.internal_worker_module(), id, payload)
+        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
+        {:noreply, state}
+
+      {{:timeout, timeout}, result} ->
+        do_handle_work(manager.state_module(), id, result, timeout)
+        {:noreply, state, round(timeout * lull)}
+
+      {:ok, result} ->
+        do_handle_work(manager.state_module(), id, result, timeout)
+        {:noreply, state, round(timeout * lull)}
+
       result ->
-        st = manager.state_module().get(id)
-        manager.state_module().put(id, %{st | value: result})
-        schedule_work(timeout)
+        do_handle_work(manager.state_module(), id, result, timeout)
         {:noreply, state, round(timeout * lull)}
     end
   end
@@ -59,6 +68,18 @@ defmodule Tarearbol.DynamicWorker do
     {:noreply, state}
   end
 
+  @spec do_handle_work(
+          state :: atom(),
+          id :: any(),
+          result :: any(),
+          timeout :: non_neg_integer()
+        ) :: :ok
+  defp do_handle_work(state, id, result, timeout) do
+    state.put(id, %{state.get(id) | value: result})
+    schedule_work(timeout)
+  end
+
   @spec schedule_work(timeout :: non_neg_integer()) :: reference()
-  defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
+  defp schedule_work(timeout),
+    do: Process.send_after(self(), :work, timeout)
 end

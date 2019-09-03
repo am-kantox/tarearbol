@@ -66,8 +66,15 @@ defmodule Tarearbol.DynamicManager do
   `payload` option to child spec as second argument (defaulting to nil,
   can also be ignored if not needed).
 
-  `perform/2` must return `:halt` if it wants to be killed or anything else to
-  be treated as a result.
+  ### Return values
+
+  `perform/2` might return
+
+  - `:halt` if it wants to be killed
+  - `{:ok, result}` to store the last result and reschedule with default timeout
+  - `{:replace, id, payload}` to replace the current worker with the new one
+  - `{{:timeout, timeout}, result}` to store the last result and reschedule in given timeout interval
+  - or **_deprecated_** anything else will be treated as a result
   """
   @doc since: "0.9.0"
   @callback perform(id :: binary(), payload :: term()) :: any()
