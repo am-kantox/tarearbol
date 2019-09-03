@@ -2,6 +2,18 @@ defmodule Tarearbol.Scheduler do
   @moduledoc """
   Cron-like task scheduler. Accepts both static and dynamic configurations.
 
+  ### Usage
+
+  Add `Tarearbol.Scheduler` to the list of supervised workers. It would attempt
+  to read the static configuration (see below) and start the `DynamicSupervisor`
+  with all the scheduled jobs as supervised workers.
+
+  The `runner` is the function of arity zero, that should return `{:ok, result}`
+  tuple upon completion. The job will be rescheduled according to its schedule.
+
+  The last result returned will be stored in the state and might be retrieved
+  later with `get/1` passing the job name.
+
   ### Static Configuration
 
   Upon starts it looks up `:tarearbol` section of `Mix.Project` for
@@ -26,15 +38,32 @@ defmodule Tarearbol.Scheduler do
   """
   use Tarearbol.DynamicManager
 
-  @doc "Type of the job runner, a function of arity zero, returning one of the outcomes below"
+  @doc """
+  Type of the job runner, an `{m, f}` tuple or a function of arity zero,
+  returning one of the outcomes below
+  """
   @type runner ::
           {atom(), atom()} | (() -> :halt | {:ok, any()} | {{:reschedule, binary()}, any()})
 
   defmodule Job do
+    @moduledoc """
+    A struct holding the job description. Used internally by `Tarearbol.Scheduler`
+    to preserve a list of scheduled jobs.
+    """
+
+    @type t :: %Job{}
+
     defstruct [:name, :module, :runner, :schedule]
 
+    @doc "The implementation to be run on schedule"
     @callback run :: Tarearbol.DynamicManager.runner()
 
+    @doc "Produces a `Tarearbol.Scheduler.Job` by parameters given"
+    @spec create(
+            name :: binary(),
+            runner :: Tarearbol.DynamicManager.runner(),
+            schedule :: binary()
+          ) :: t()
     def create(name, runner, schedule) do
       run_ast =
         case runner do
@@ -69,6 +98,7 @@ defmodule Tarearbol.Scheduler do
     do: for({name, runner, schedule} <- jobs(), into: %{}, do: job!(name, runner, schedule))
 
   @impl Tarearbol.DynamicManager
+  @doc false
   def perform(id, %{job: %Job{} = job} = payload) do
     data = Map.from_struct(job)
 
@@ -101,21 +131,42 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
+  @doc """
+  Creates and temporarily pushes the job to the list of currently scheduled jobs.
+
+  For the implementation that survives restarts use `push!/3`.
+  """
   @spec push(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
   def push(name, runner, schedule) do
     {name, opts} = job!(name, runner, schedule)
     Tarearbol.Scheduler.put(name, opts)
   end
 
+  @doc """
+  Creates and pushes the job to the list of currently scheduled jobs, updates
+  the permanent list of scheduled jobs.
+
+  For the implementation that temporarily pushes a job, use `push/3`.
+  """
   @spec push(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
   def push!(name, runner, schedule) do
     File.write!(config_file(), [{name, runner, schedule} | jobs()])
     push(name, runner, schedule)
   end
 
+  @doc """
+  Removes the scheduled job from the schedule by `id`.
+
+  For the implementation that survives restarts use `pop!/1`.
+  """
   @spec pop(name :: any()) :: map() | {:error, :not_found}
   def pop(name), do: Tarearbol.Scheduler.del(name)
 
+  @doc """
+  Removes the scheduled job from the schedule by `id` and updated the configuration.
+
+  For the implementation that removes jobs temporarily, use `pop!/1`.
+  """
   @spec pop!(name :: any()) :: map() | {:error, :not_found}
   def pop!(name) do
     File.write!(config_file(), for({id, _, _} = job <- jobs(), id != name, do: job))
