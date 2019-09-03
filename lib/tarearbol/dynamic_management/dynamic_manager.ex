@@ -107,6 +107,7 @@ defmodule Tarearbol.DynamicManager do
   defmacro __using__(opts) do
     quote location: :keep do
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
+      @doc false
       @spec namespace :: module()
       def namespace, do: @namespace
 
@@ -116,9 +117,11 @@ defmodule Tarearbol.DynamicManager do
       defp child_mod(module) when is_list(module),
         do: Module.concat(@namespace, List.last(module))
 
+      @doc false
       @spec internal_worker_module :: module()
       def internal_worker_module, do: child_mod(Tarearbol.InternalWorker)
 
+      @doc false
       @spec dynamic_supervisor_module :: module()
       def dynamic_supervisor_module, do: child_mod(Tarearbol.DynamicSupervisor)
 
@@ -193,6 +196,7 @@ defmodule Tarearbol.DynamicManager do
         end
 
       Module.create(Module.concat(@namespace, State), state_module_ast, __ENV__)
+      @doc false
       @spec state_module :: module()
       def state_module, do: Module.concat(@namespace, State)
 
@@ -227,6 +231,9 @@ defmodule Tarearbol.DynamicManager do
 
       use Supervisor
 
+      @doc """
+      Starts the `DynamicSupervisor` and its helpers to manage dynamic children
+      """
       def start_link(opts \\ []),
         do: Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
 
@@ -249,8 +256,22 @@ defmodule Tarearbol.DynamicManager do
         Supervisor.init(children, strategy: :rest_for_one)
       end
 
+      @doc """
+      Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
+      behaviour to the list of supervised children
+      """
       def put(id, opts), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, opts)
+
+      @doc """
+      Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
+      behaviour from the list of supervised children
+      """
       def del(id), do: Tarearbol.InternalWorker.del(internal_worker_module(), id)
+
+      @doc """
+      Retrieves the information (`payload`, `timeout`, `lull` etc.) assotiated with
+      the supervised worker
+      """
       def get(id), do: Tarearbol.InternalWorker.get(internal_worker_module(), id)
     end
   end

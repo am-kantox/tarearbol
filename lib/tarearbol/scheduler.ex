@@ -38,7 +38,7 @@ defmodule Tarearbol.Scheduler do
   """
   use Tarearbol.DynamicManager
 
-  @doc """
+  @typedoc """
   Type of the job runner, an `{m, f}` tuple or a function of arity zero,
   returning one of the outcomes below
   """
@@ -51,6 +51,7 @@ defmodule Tarearbol.Scheduler do
     to preserve a list of scheduled jobs.
     """
 
+    @typedoc "The struct containing the information about the job"
     @type t :: %Job{}
 
     defstruct [:name, :module, :runner, :schedule]
