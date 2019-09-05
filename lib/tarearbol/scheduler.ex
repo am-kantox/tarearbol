@@ -19,6 +19,10 @@ defmodule Tarearbol.Scheduler do
   Upon starts it looks up `:tarearbol` section of `Mix.Project` for
   `:jobs` and `:jobs_file` keys. The latter has a default `.tarearbol.exs`.
 
+  Also it looks up `:tarearbol, :jobs` section of `config.exs`. Everything found
+  is unioned. Jobs with the same names are overriden, the file has precedence
+  over project config, the application config has least precedence.
+
   If found, jobs as a list of tuples of `{name, runner, schedule}` are scheduled.
   These are expected to be in the following form.
 
@@ -194,7 +198,8 @@ defmodule Tarearbol.Scheduler do
 
   @spec jobs :: [{any(), runner(), binary()}]
   defp jobs() do
-    Keyword.get(config(), :jobs, []) ++
+    Application.get_env(:tarearbol, :jobs, []) ++
+      Keyword.get(config(), :jobs, []) ++
       if File.exists?(config_file()),
         do: config_file() |> File.read!() |> Code.eval_string(),
         else: []
