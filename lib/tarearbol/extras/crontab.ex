@@ -1,12 +1,35 @@
 defmodule Tarearbol.Crontab do
-  @moduledoc false
+  @moduledoc """
+  Helper functions to work with `cron` syntax.
+  """
 
+  @typedoc "Internal representation of the record in cron file"
   @type t :: %__MODULE__{}
   defstruct [:minute, :hour, :day, :month, :day_of_week]
 
-  # @prefix "dt."
   @prefix ""
 
+  @doc """
+  Returns the next `DateTime` the respective `cron` record points to
+  with a precision given as the third argument (default: `:second`.)
+
+  If the first parameter is not given, it assumes _the next after now_.
+
+  _Examples_
+
+      iex> dt = DateTime.from_unix!(1567091960)
+      ~U[2019-08-29 15:19:20Z]
+      iex> Tarearbol.Crontab.next(dt, "42 3 28 08 *")
+      [
+        origin: ~U[2019-08-29 15:19:20Z],
+        next: ~U[2020-08-28 03:42:00Z],
+        second: 31494160
+      ]
+
+  where `origin` contains the timestamp to lookup the `next` for, `next`
+  is the `DateTime` instance of the next event and `second` is the
+  {`precision`, `difference_in_that_precision`}.
+  """
   @spec next(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) :: DateTime.t()
   def next(dt \\ nil, input, opts \\ [])
 
@@ -15,6 +38,13 @@ defmodule Tarearbol.Crontab do
   def next(%DateTime{} = dt, input, opts),
     do: dt |> next_as_stream(input, opts) |> Enum.take(1) |> hd()
 
+  @doc """
+  Returns the _list_ of all the events after `dt` (default: `DateTime.utc_now`.)
+
+  This function calculates the outcome greedily and, while it might be slightly
+  faster than `Tarearbol.Crontab.next_as_stream/3`, it should not be used for
+  frequently recurring cron records (like `"* * * * *"`.)
+  """
   @spec next_as_list(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
           keyword()
   def next_as_list(dt \\ nil, input, opts \\ [])
@@ -25,7 +55,7 @@ defmodule Tarearbol.Crontab do
   def next_as_list(%DateTime{} = dt, input, opts) do
     precision = Keyword.get(opts, :precision, :second)
 
-    %Tarearbol.Crontab{} = ct = input |> parse() |> quote_it()
+    %Tarearbol.Crontab{} = ct = prepare(input)
 
     next_dts =
       for year <- [dt.year, dt.year + 1],
@@ -71,6 +101,13 @@ defmodule Tarearbol.Crontab do
     ]
   end
 
+  @doc """
+  Returns the _stream_ of all the events after `dt` (default: `DateTime.utc_now`.)
+
+  This function calculates the outcome lazily, returning a stream.
+
+  See `Tarearbol.Crontab.next_as_list/3` for greedy evaluation.
+  """
   @spec next_as_stream(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
           Stream.t()
   def next_as_stream(dt \\ nil, input, opts \\ [])
@@ -91,7 +128,7 @@ defmodule Tarearbol.Crontab do
       ) do
     precision = Keyword.get(opts, :precision, :second)
 
-    %Tarearbol.Crontab{} = ct = input |> parse() |> quote_it()
+    %Tarearbol.Crontab{} = ct = input |> parse() |> prepare()
 
     # {stream, :ok} =
     Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
@@ -176,8 +213,17 @@ defmodule Tarearbol.Crontab do
     #    stream
   end
 
-  @spec quote_it(input :: Tarearbol.Crontab.t()) :: Tarearbol.Crontab.t()
-  def quote_it(%Tarearbol.Crontab{
+  @doc """
+  Parses the cron string into `Tarearbol.Crontab.t()` struct.
+
+  Input format: ["minute hour day/month month day/week"](https://crontab.guru/).
+  """
+
+  @spec prepare(input :: binary() | Tarearbol.Crontab.t()) :: Tarearbol.Crontab.t()
+  def prepare(input) when is_binary(input),
+    do: input |> parse() |> prepare()
+
+  def prepare(%Tarearbol.Crontab{
         minute: minute,
         hour: hour,
         day: day,
@@ -193,11 +239,12 @@ defmodule Tarearbol.Crontab do
     }
   end
 
-  @spec parse(input :: binary()) :: Tarearbol.Crontab.t()
   @doc """
   Parses the cron string into human-readable representation.
 
-  Format: ["minute hour day/month month day/week"](https://crontab.guru/).
+  **This function is exported for debugging purposes only, normally one would call `prepare/1` instead.**
+
+  Input format: ["minute hour day/month month day/week"](https://crontab.guru/).
 
   _Examples:_
 
@@ -223,6 +270,7 @@ defmodule Tarearbol.Crontab do
 
   """
 
+  @spec parse(input :: binary()) :: Tarearbol.Crontab.t()
   def parse(input) when is_binary(input),
     do: do_parse(input, {[:hour, :day, :month, :day_of_week], :minute, "", %{}})
 
@@ -369,7 +417,7 @@ defmodule Tarearbol.Crontab do
     end
   end
 
-  @spec str_to_int(input :: binary(), acc :: {1 | -1, [integer()]}) ::
+  @spec str_to_int(input :: binary(), acc :: {1 | -1, [integer()]} | {:error, any()}) ::
           integer() | {:error, any()}
   defp str_to_int(input, acc \\ {1, []})
   defp str_to_int(_, {:error, reason}), do: {:error, reason}
@@ -393,7 +441,24 @@ defmodule Tarearbol.Crontab do
 
   ##############################################################################
 
-  @spec formula(ct :: Tarearbol.Crontab.t()) :: :error | binary()
+  @doc """
+  Produces the single formula out of cron record. Might be useful
+  for some external check that requires the single validation call.
+
+  _Examples_
+
+      iex> Tarearbol.Crontab.formula("42 3 28 08 *").formula
+      "(day == 28) && (rem(day_of_week, 1) == 0) && (hour == 3) && (minute == 42) && (month == 8)"
+
+      iex> Tarearbol.Crontab.formula("423 * * * *")
+      {:error, [minute: {:could_not_parse_field, ["423"]}]}
+
+  """
+  @spec formula(ct :: binary() | Tarearbol.Crontab.t()) :: :error | binary()
+  def formula(ct) when is_binary(ct) do
+    with f when is_binary(f) <- ct |> parse() |> formula(), do: Formulae.compile(f)
+  end
+
   def formula(%Tarearbol.Crontab{} = ct) do
     ct
     |> Enum.reduce({:ok, []}, fn
@@ -409,16 +474,22 @@ defmodule Tarearbol.Crontab do
   end
 
   defimpl Enumerable do
-    def count(%Tarearbol.Crontab{} = _sct), do: 5
+    @moduledoc false
 
+    @doc false
+    def count(%Tarearbol.Crontab{} = _sct), do: {:ok, 5}
+
+    @doc false
     Enum.each([:minute, :hour, :day, :month, :day_of_week], fn item ->
-      def member?(%Tarearbol.Crontab{} = _sct, unquote(item)), do: true
+      def member?(%Tarearbol.Crontab{} = _sct, unquote(item)), do: {:ok, true}
     end)
 
     def member?(%Tarearbol.Crontab{} = _sct, _val), do: false
 
+    @doc false
     def slice(%Tarearbol.Crontab{} = _sct), do: raise("Not implemented")
 
+    @doc false
     def reduce(%Tarearbol.Crontab{} = sct, acc, fun) do
       Enumerable.List.reduce(
         for({key, formulae} <- Map.from_struct(sct), do: {key, formulae}),

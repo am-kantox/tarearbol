@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.13.0"
+  @version "0.13.1"
 
   def project do
     [
@@ -93,7 +93,8 @@ defmodule Tarearbol.Mixfile do
       extras: [
         "stuff/pages/intro.md",
         "stuff/pages/task_management.md",
-        "stuff/pages/dynamic_workers_management.md"
+        "stuff/pages/dynamic_workers_management.md",
+        "stuff/pages/cron_management.md"
       ],
       groups_for_modules: [
         "Task Sugar": [
@@ -104,6 +105,7 @@ defmodule Tarearbol.Mixfile do
         ],
         Scheduler: [
           Tarearbol.Calendar,
+          Tarearbol.Crontab,
           Tarearbol.Scheduler,
           Tarearbol.Scheduler.Job
         ],
