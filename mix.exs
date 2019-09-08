@@ -96,8 +96,17 @@ defmodule Tarearbol.Mixfile do
         "stuff/pages/dynamic_workers_management.md"
       ],
       groups_for_modules: [
-        # Tarearbol
-
+        "Task Sugar": [
+          Tarearbol
+        ],
+        "Dymanic Supervisor Sugar": [
+          Tarearbol.DynamicManager
+        ],
+        Scheduler: [
+          Tarearbol.Calendar,
+          Tarearbol.Scheduler,
+          Tarearbol.Scheduler.Job
+        ],
         Exceptions: [
           Tarearbol.TaskFailedError
         ]

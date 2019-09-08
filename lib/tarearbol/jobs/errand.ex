@@ -97,13 +97,13 @@ defmodule Tarearbol.Errand do
   defp run_in_opts(opts), do: Keyword.delete(opts, :repeatedly)
 
   # to perform 25 times in 21 day
-  @mike_perham_const 1.15647559215
+  # @mike_perham_const 1.15647559215
 
-  @spec sidekiq_interval(integer()) :: integer()
-  defp sidekiq_interval(interval) when interval <= 0, do: 0
+  # @spec sidekiq_interval(integer()) :: integer()
+  # defp sidekiq_interval(interval) when interval <= 0, do: 0
 
-  defp sidekiq_interval(interval),
-    do: @mike_perham_const * interval * :math.atan(:math.log(interval))
+  # defp sidekiq_interval(interval),
+  #   do: @mike_perham_const * interval * :math.atan(:math.log(interval))
 
   defp interval_to_datetime(msecs) do
     DateTime.utc_now()
