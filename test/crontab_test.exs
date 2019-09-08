@@ -5,11 +5,12 @@ defmodule Tarearbol.Crontab.Test do
   doctest Tarearbol.Crontab
   doctest Tarearbol.Calendar
 
-  setup do
-    :ok
-  end
+  test "both greedy and lazy methods return the same" do
+    dt = DateTime.utc_now()
+    greedy = Tarearbol.Crontab.next_as_list(dt, "42 * 30 8 6,7", precision: :microsecond)
+    lazy = Tarearbol.Crontab.next_as_stream(dt, "42 * 30 8 6,7", precision: :microsecond)
 
-  test "responds with :not_found on a non-existing child" do
-    #    assert {:error, :not_found} == Tarearbol.Application.kill(self())
+    assert greedy[:next] ==
+             Enum.map(lazy, &[{:timestamp, &1[:next]}, {:microsecond, &1[:microsecond]}])
   end
 end

@@ -8,15 +8,27 @@ defmodule Tarearbol.Crontab do
   @prefix ""
 
   @spec next(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) :: DateTime.t()
-  def next(dt \\ nil, input, opts \\ []) do
-    dt = if is_nil(dt), do: DateTime.utc_now(), else: dt
+  def next(dt \\ nil, input, opts \\ [])
+
+  def next(nil, input, opts), do: next(DateTime.utc_now(), input, opts)
+
+  def next(%DateTime{} = dt, input, opts),
+    do: dt |> next_as_stream(input, opts) |> Enum.take(1) |> hd()
+
+  @spec next_as_list(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
+          keyword()
+  def next_as_list(dt \\ nil, input, opts \\ [])
+
+  def next_as_list(nil, input, opts),
+    do: next_as_list(DateTime.utc_now(), input, opts)
+
+  def next_as_list(%DateTime{} = dt, input, opts) do
     precision = Keyword.get(opts, :precision, :second)
 
-    with %Tarearbol.Crontab{} = ct <- parse(input),
-         %Tarearbol.Crontab{} = ct <- quote_it(ct) do
-      try do
-        for(
-          year <- [dt.year, dt.year + 1],
+    %Tarearbol.Crontab{} = ct = input |> parse() |> quote_it()
+
+    next_dts =
+      for year <- [dt.year, dt.year + 1],
           month <- 1..dt.calendar.months_in_year(year),
           year > dt.year || month >= dt.month,
           ct.month.eval.(month: month),
@@ -32,31 +44,136 @@ defmodule Tarearbol.Crontab do
           year > dt.year || month > dt.month || day > dt.day || hour > dt.hour ||
             minute > dt.minute,
           ct.minute.eval.(minute: minute),
-          do:
-            throw(%DateTime{
-              year: year,
-              month: month,
-              day: day,
-              hour: hour,
-              minute: minute,
-              second: 0,
-              microsecond: dt.microsecond,
-              time_zone: dt.time_zone,
-              zone_abbr: dt.zone_abbr,
-              utc_offset: dt.utc_offset,
-              std_offset: dt.std_offset,
-              calendar: dt.calendar
-            })
-        )
-      catch
-        result ->
-          [
-            {:origin, DateTime.truncate(dt, precision)},
-            {:next, DateTime.truncate(result, precision)},
-            {precision, DateTime.diff(result, dt, precision)}
-          ]
-      end
-    end
+          do: %DateTime{
+            year: year,
+            month: month,
+            day: day,
+            hour: hour,
+            minute: minute,
+            second: 0,
+            microsecond: dt.microsecond,
+            time_zone: dt.time_zone,
+            zone_abbr: dt.zone_abbr,
+            utc_offset: dt.utc_offset,
+            std_offset: dt.std_offset,
+            calendar: dt.calendar
+          }
+
+    [
+      {:origin, DateTime.truncate(dt, precision)},
+      {:next,
+       Enum.map(next_dts, fn next_dt ->
+         [
+           {:timestamp, DateTime.truncate(next_dt, precision)},
+           {precision, DateTime.diff(next_dt, dt, precision)}
+         ]
+       end)}
+    ]
+  end
+
+  @spec next_as_stream(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
+          Stream.t()
+  def next_as_stream(dt \\ nil, input, opts \\ [])
+
+  def next_as_stream(nil, input, opts),
+    do: next_as_stream(DateTime.utc_now(), input, opts)
+
+  def next_as_stream(
+        %DateTime{
+          year: dty,
+          month: dtm,
+          day: dtd,
+          hour: dth,
+          minute: dtmin
+        } = dt,
+        input,
+        opts
+      ) do
+    precision = Keyword.get(opts, :precision, :second)
+
+    %Tarearbol.Crontab{} = ct = input |> parse() |> quote_it()
+
+    # {stream, :ok} =
+    Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
+      {Stream.transform(1..dt.calendar.months_in_year(year), :ok, fn
+         month, :ok when year <= dty and month < dtm ->
+           {[], :ok}
+
+         month, :ok ->
+           if not ct.month.eval.(month: month) do
+             {[], :ok}
+           else
+             {Stream.transform(1..dt.calendar.days_in_month(year, month), :ok, fn
+                day, :ok when year <= dty and month <= dtm and day < dtd ->
+                  {[], :ok}
+
+                day, :ok ->
+                  if not ct.day.eval.(day: day) do
+                    {[], :ok}
+                  else
+                    {Stream.transform(
+                       [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+                       :ok,
+                       fn
+                         day_of_week, :ok ->
+                           if not ct.day_of_week.eval.(day_of_week: day_of_week) do
+                             {[], :ok}
+                           else
+                             {Stream.transform(0..23, :ok, fn
+                                hour, :ok
+                                when year <= dty and month <= dtm and day <= dtd and hour < dth ->
+                                  {[], :ok}
+
+                                hour, :ok ->
+                                  if not ct.hour.eval.(hour: hour) do
+                                    {[], :ok}
+                                  else
+                                    {Stream.transform(0..59, :ok, fn
+                                       minute, :ok
+                                       when year <= dty and month <= dtm and day <= dtd and
+                                              hour <= dth and minute < dtmin ->
+                                         {[], :ok}
+
+                                       minute, :ok ->
+                                         if not ct.minute.eval.(minute: minute) do
+                                           {[], :ok}
+                                         else
+                                           next_dt = %DateTime{
+                                             year: year,
+                                             month: month,
+                                             day: day,
+                                             hour: hour,
+                                             minute: minute,
+                                             second: 0,
+                                             microsecond: dt.microsecond,
+                                             time_zone: dt.time_zone,
+                                             zone_abbr: dt.zone_abbr,
+                                             utc_offset: dt.utc_offset,
+                                             std_offset: dt.std_offset,
+                                             calendar: dt.calendar
+                                           }
+
+                                           {[
+                                              [
+                                                {:origin, DateTime.truncate(dt, precision)},
+                                                {:next, DateTime.truncate(next_dt, precision)},
+                                                {precision, DateTime.diff(next_dt, dt, precision)}
+                                              ]
+                                            ], :ok}
+                                         end
+                                     end), :ok}
+                                  end
+                              end), :ok}
+                           end
+                       end
+                     ), :ok}
+                  end
+              end), :ok}
+           end
+       end), :ok}
+    end)
+
+    #    stream
   end
 
   @spec quote_it(input :: Tarearbol.Crontab.t()) :: Tarearbol.Crontab.t()
