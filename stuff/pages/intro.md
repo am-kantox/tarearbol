@@ -1,7 +1,20 @@
 # Tarearbol
 
+- **Scaffold for managing many children under a `Tarearbol.DynamicSupervisor` with a pleasure**
 - **Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more**
-- **Scaffold for managing many children under a `DynamicSupervisor` with a pleasure**
+- **Lightweight scalable cron-like job scheduler `Tarearbol.Scheduler`**
+
+## Dynamic Workers Management
+
+### Features
+
+- Scaffold for the supervised `DynamicSupervisor`
+- No code for managing processes required
+- Implementation is as easy as 4 callbacks
+- Behaviour-driven consumers
+- Consistent state and callbacks on state changes (like restarting)
+
+### [Dynamic Workers Management Examples](dynamic_workers_management.html)
 
 ## Task Management
 
@@ -19,14 +32,16 @@
 
 ### [Task Management Examples](task_management.html)
 
-## Dynamic Workers Management
+## Job Management
 
 ### Features
 
-- Scaffold for the supervised `DynamicSupervisor`
-- No code for managing processes required
-- Implementation is as easy as 4 callbacks
-- Behaviour-driven consumers
-- Consistent state and callbacks on state changes (like restarting)
+- Fully supported [cron syntax](https://crontab.guru/)
+- Job callback with an ability to cancel and reschedule jobs
+- Easy configuration via project, config, or external file
+- No persistent storage required
+- `Stream` with all the upcoming cron events by cron record
+- `Tarearbol.Calendar.{beginning_of,end_of}/2` with full `Calendar` support
 
-### [Dynamic Workers Management Examples](dynamic_workers_management.html)
+### [Job Management Examples](cron_management.html)
+
