@@ -39,7 +39,7 @@ defmodule Tarearbol.Crontab do
     do: dt |> next_as_stream(input, opts) |> Enum.take(1) |> hd()
 
   @doc """
-  Returns the _list_ of all the events after `dt` (default: `DateTime.utc_now`.)
+  Returns the _list_ of all the events after `dt` (default: `DateTime.utc_now/0`.)
 
   This function calculates the outcome greedily and, while it might be slightly
   faster than `Tarearbol.Crontab.next_as_stream/3`, it should not be used for
@@ -102,7 +102,7 @@ defmodule Tarearbol.Crontab do
   end
 
   @doc """
-  Returns the _stream_ of all the events after `dt` (default: `DateTime.utc_now`.)
+  Returns the _stream_ of all the events after `dt` (default: `DateTime.utc_now/0`.)
 
   This function calculates the outcome lazily, returning a stream.
 
@@ -313,7 +313,7 @@ defmodule Tarearbol.Crontab do
   defguardp is_cc(cc) when byte_size(cc) in [1, 2]
 
   @spec parts(key :: atom(), input :: binary()) :: [binary()]
-  def parts(key, input) do
+  defp parts(key, input) do
     input
     |> String.split(",")
     |> Enum.reduce({:ok, []}, fn e, acc ->
