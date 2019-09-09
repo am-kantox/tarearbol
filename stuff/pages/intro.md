@@ -1,6 +1,6 @@
 # Tarearbol
 
-- **Scaffold for managing many children under a `Tarearbol.DynamicSupervisor` with a pleasure**
+- **Scaffold for managing many children under `Tarearbol.DynamicManager` wrapping `DynamicSupervisor` with a pleasure**
 - **Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more**
 - **Lightweight scalable cron-like job scheduler `Tarearbol.Scheduler`**
 
