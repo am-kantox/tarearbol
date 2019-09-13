@@ -61,12 +61,11 @@ defmodule Tarearbol.Crontab do
       for year <- [dt.year, dt.year + 1],
           month <- 1..dt.calendar.months_in_year(year),
           year > dt.year || month >= dt.month,
-          ct.month.eval.(month: month),
           day <- 1..dt.calendar.days_in_month(year, month),
           year > dt.year || month > dt.month || day >= dt.day,
-          ct.day.eval.(day: day),
-          day_of_week <- [dt.calendar.day_of_week(year, month, day)],
-          ct.day_of_week.eval.(day_of_week: day_of_week),
+          (ct.month.eval.(month: month) &&
+             ct.day.eval.(day: day)) ||
+            ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, day)),
           hour <- 0..23,
           year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
           ct.hour.eval.(hour: hour),
@@ -130,70 +129,63 @@ defmodule Tarearbol.Crontab do
 
     %Tarearbol.Crontab{} = ct = input |> parse() |> prepare()
 
-    # {stream, :ok} =
+    dttup = {dty, dtm, dtd, dth, dtmin}
+
     [dt.year, dt.year + 1]
     |> Stream.transform(:ok, fn year, :ok ->
-      1..dt.calendar.months_in_year(year)
-      |> Stream.drop_while(&match?(month when {year, month} < {dty, dtm}, &1))
-      |> Stream.filter(&ct.month.eval.(month: &1))
-      |> Stream.transform(:ok, fn month, :ok ->
-        1..dt.calendar.days_in_month(year, month)
-        |> Stream.drop_while(&match?(day when {year, month, day} < {dty, dtm, dtd}, &1))
-        |> Stream.filter(&ct.day.eval.(day: &1))
-        |> Stream.filter(
-          &ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, &1))
-        )
-        |> Stream.transform(:ok, fn day, :ok ->
-          0..23
-          |> Stream.drop_while(
-            &match?(hour when {year, month, day, hour} < {dty, dtm, dtd, dth}, &1)
-          )
-          |> Stream.filter(&ct.hour.eval.(hour: &1))
-          |> Stream.transform(:ok, fn hour, :ok ->
-            0..59
-            |> Stream.drop_while(
-              &match?(
-                minute when {year, month, day, hour, minute} < {dty, dtm, dtd, dth, dtmin},
-                &1
-              )
-            )
-            |> Stream.filter(&ct.minute.eval.(minute: &1))
-            |> Stream.map(fn minute ->
-              next_dt = %DateTime{
-                year: year,
-                month: month,
-                day: day,
-                hour: hour,
-                minute: minute,
-                second: 0,
-                microsecond: dt.microsecond,
-                time_zone: dt.time_zone,
-                zone_abbr: dt.zone_abbr,
-                utc_offset: dt.utc_offset,
-                std_offset: dt.std_offset,
-                calendar: dt.calendar
-              }
-
-              [
-                {:origin, DateTime.truncate(dt, precision)},
-                {:next, DateTime.truncate(next_dt, precision)},
-                {precision, DateTime.diff(next_dt, dt, precision)}
-              ]
-            end)
-            |> (&{&1, :ok}).()
+      {1..dt.calendar.months_in_year(year)
+       |> Stream.drop_while(&({year, &1, nil, nil, nil} < dttup))
+       |> Stream.transform(:ok, fn month, :ok ->
+         {1..dt.calendar.days_in_month(year, month)
+          |> Stream.drop_while(&({year, month, &1, nil, nil} < dttup))
+          |> Stream.filter(fn day ->
+            (ct.month.eval.(month: month) && ct.day.eval.(day: day)) ||
+              ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, day))
           end)
-          |> (&{&1, :ok}).()
-        end)
-        |> (&{&1, :ok}).()
-      end)
-      |> (&{&1, :ok}).()
-    end)
+          |> Stream.transform(:ok, fn day, :ok ->
+            {0..23
+             |> Stream.drop_while(&({year, month, day, &1, nil} < dttup))
+             |> Stream.filter(&ct.hour.eval.(hour: &1))
+             |> Stream.transform(:ok, fn hour, :ok ->
+               {0..59
+                |> Stream.drop_while(&({year, month, day, hour, &1} < dttup))
+                |> Stream.filter(&ct.minute.eval.(minute: &1))
+                |> Stream.map(fn minute ->
+                  next_dt = %DateTime{
+                    dt
+                    | year: year,
+                      month: month,
+                      day: day,
+                      hour: hour,
+                      minute: minute,
+                      second: 0
+                  }
 
-    #    stream
+                  [
+                    {:origin, DateTime.truncate(dt, precision)},
+                    {:next, DateTime.truncate(next_dt, precision)},
+                    {precision, DateTime.diff(next_dt, dt, precision)}
+                  ]
+                end), :ok}
+             end), :ok}
+          end), :ok}
+       end), :ok}
+    end)
   end
 
   @doc """
-  Parses the cron string into `Tarearbol.Crontab.t()` struct.
+  Converts the parsed text into functions for the crontab evaluation.
+
+  Note that day_of_week, day, and month are interwinded:
+
+  - if all of them are "*", all dates are matched
+  - if day_of_week is "*", then only dates that match day+month are matched
+  - if _both_ day and month are "*", then only dates that match day_of_week are matched
+  - otherwise, dates that match _either_ day_of_week or day+month are matched.
+
+  To achieve that, we `or` the checks for day+month and day_of_week when streaming,
+  and preemptively modify the checks for day_of_week or for day and month to be a
+  "never-match" when the opposite matcher is specified.
 
   Input format: ["minute hour day/month month day/week"](https://crontab.guru/).
   """
@@ -201,6 +193,22 @@ defmodule Tarearbol.Crontab do
   @spec prepare(input :: binary() | Tarearbol.Crontab.t()) :: Tarearbol.Crontab.t()
   def prepare(input) when is_binary(input),
     do: input |> parse() |> prepare()
+
+  # day of month not specified, force check on day of week
+  def prepare(%Tarearbol.Crontab{day: day, month: month, day_of_week: day_of_week} = ct)
+      when day == "(rem(day, 1) == 0)" and
+             month == "(rem(month, 1) == 0)" and
+             day_of_week != "(rem(day_of_week, 1) == 0)" do
+    prepare(%{ct | day: "(rem(day, 1) == 1)", month: "(rem(month, 1) == 1)"})
+  end
+
+  # day of week not specified, force check on day of month
+  def prepare(%Tarearbol.Crontab{day: day, month: month, day_of_week: day_of_week} = ct)
+      when (day != "(rem(day, 1) == 0)" or
+              month != "(rem(month, 1) == 0)") and
+             day_of_week == "(rem(day_of_week, 1) == 0)" do
+    prepare(%{ct | day_of_week: "(rem(day_of_week, 1) == 1)"})
+  end
 
   def prepare(%Tarearbol.Crontab{
         minute: minute,
@@ -227,12 +235,12 @@ defmodule Tarearbol.Crontab do
 
   _Examples:_
 
-      iex> Tarearbol.Crontab.parse "10-30/5 */4 1 */1 6,7"
+      iex> Tarearbol.Crontab.parse "9-30/5 */4 1 */1 6,7"
       %Tarearbol.Crontab{
         day: "(day == 1)",
         day_of_week: "(day_of_week == 6 || day_of_week == 7)",
         hour: "(rem(hour, 4) == 0)",
-        minute: "(rem(minute, 5) == 0 && minute >= 10 && minute <= 30)",
+        minute: "(rem(minute, 5) == rem(9, 5) && minute >= 9 && minute <= 30)",
         month: "(rem(month, 1) == 0)"
       }
 
@@ -243,7 +251,7 @@ defmodule Tarearbol.Crontab do
         day: "(day == 1)",
         day_of_week: {:error, {:could_not_parse_integer, "6d"}},
         hour: "(rem(hour, 4) == 0)",
-        minute: "(rem(minute, 5) == 0 && minute >= 10 && minute <= 30)",
+        minute: "(rem(minute, 5) == rem(10, 5) && minute >= 10 && minute <= 30)",
         month: "(rem(month, 1) == 0)"
       }
 
@@ -356,10 +364,18 @@ defmodule Tarearbol.Crontab do
   @spec parse_int(key :: atom(), s1 :: binary(), s2 :: binary()) :: binary() | {:error, any()}
   defp parse_int(key, s1, s2) do
     case {str_to_int(s1), str_to_int(s2)} do
-      {{:error, r1}, {:error, r2}} -> {:error, [r1, r2]}
-      {{:error, r1}, _} -> {:error, r1}
-      {_, {:error, r2}} -> {:error, r2}
-      {from, int} -> {:ok, "rem(#{@prefix}#{key}, #{int}) == 0 && #{@prefix}#{key} >= #{from}"}
+      {{:error, r1}, {:error, r2}} ->
+        {:error, [r1, r2]}
+
+      {{:error, r1}, _} ->
+        {:error, r1}
+
+      {_, {:error, r2}} ->
+        {:error, r2}
+
+      {from, int} ->
+        {:ok,
+         "rem(#{@prefix}#{key}, #{int}) == rem(#{from}, #{int}) && #{@prefix}#{key} >= #{from}"}
     end
   end
 
@@ -390,9 +406,9 @@ defmodule Tarearbol.Crontab do
 
       {from, till, int} ->
         {:ok,
-         "rem(#{@prefix}#{key}, #{int}) == 0 && #{@prefix}#{key} >= #{from} && #{@prefix}#{key} <= #{
-           till
-         }"}
+         "rem(#{@prefix}#{key}, #{int}) == rem(#{from}, #{int}) && #{@prefix}#{key} >= #{from} && #{
+           @prefix
+         }#{key} <= #{till}"}
     end
   end
 
