@@ -132,82 +132,51 @@ defmodule Tarearbol.Crontab do
 
     # {stream, :ok} =
     Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
-      {Stream.transform(1..dt.calendar.months_in_year(year), :ok, fn
-         month, :ok when year <= dty and month < dtm ->
-           {[], :ok}
+      1..dt.calendar.months_in_year(year)
+      |> Stream.drop_while(&match?(month when {year, month} < {dty, dtm}, &1))
+      |> Stream.reject(&ct.month.eval.(month: &1))
+      |> Stream.transform(:ok, fn month, :ok ->
+        1..dt.calendar.days_in_month(year, month)
+        |> Stream.drop_while(&match?(day when {year, month, day} < {dty, dtm, dtd}, &1))
+        |> Stream.reject(&ct.day.eval.(day: &1))
+        |> Stream.reject(&ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, &1)))
+        |> Stream.transform(:ok, fn day, :ok ->
+          0..23
+          |> Stream.drop_while(&match?(hour when {year, month, day, hour} < {dty, dtm, dtd, dth}, &1))
+          |> Stream.reject(&ct.hour.eval.(hour: &1))
+          |> Stream.transform(:ok, fn hour, :ok ->
+            0..59
+            |> Stream.drop_while(&match?(minute when {year, month, day, hour, minute} < {dty, dtm, dtd, dth, dtmin}, &1))
+            |> Stream.reject(&ct.minute.eval.(minute: &1))
+            |> Stream.map(fn minute ->
+              next_dt = %DateTime{
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: 0,
+                microsecond: dt.microsecond,
+                time_zone: dt.time_zone,
+                zone_abbr: dt.zone_abbr,
+                utc_offset: dt.utc_offset,
+                std_offset: dt.std_offset,
+                calendar: dt.calendar
+              }
 
-         month, :ok ->
-           if not ct.month.eval.(month: month) do
-             {[], :ok}
-           else
-             {Stream.transform(1..dt.calendar.days_in_month(year, month), :ok, fn
-                day, :ok when year <= dty and month <= dtm and day < dtd ->
-                  {[], :ok}
-
-                day, :ok ->
-                  if not ct.day.eval.(day: day) do
-                    {[], :ok}
-                  else
-                    {Stream.transform(
-                       [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
-                       :ok,
-                       fn
-                         day_of_week, :ok ->
-                           if not ct.day_of_week.eval.(day_of_week: day_of_week) do
-                             {[], :ok}
-                           else
-                             {Stream.transform(0..23, :ok, fn
-                                hour, :ok
-                                when year <= dty and month <= dtm and day <= dtd and hour < dth ->
-                                  {[], :ok}
-
-                                hour, :ok ->
-                                  if not ct.hour.eval.(hour: hour) do
-                                    {[], :ok}
-                                  else
-                                    {Stream.transform(0..59, :ok, fn
-                                       minute, :ok
-                                       when year <= dty and month <= dtm and day <= dtd and
-                                              hour <= dth and minute < dtmin ->
-                                         {[], :ok}
-
-                                       minute, :ok ->
-                                         if not ct.minute.eval.(minute: minute) do
-                                           {[], :ok}
-                                         else
-                                           next_dt = %DateTime{
-                                             year: year,
-                                             month: month,
-                                             day: day,
-                                             hour: hour,
-                                             minute: minute,
-                                             second: 0,
-                                             microsecond: dt.microsecond,
-                                             time_zone: dt.time_zone,
-                                             zone_abbr: dt.zone_abbr,
-                                             utc_offset: dt.utc_offset,
-                                             std_offset: dt.std_offset,
-                                             calendar: dt.calendar
-                                           }
-
-                                           {[
-                                              [
-                                                {:origin, DateTime.truncate(dt, precision)},
-                                                {:next, DateTime.truncate(next_dt, precision)},
-                                                {precision, DateTime.diff(next_dt, dt, precision)}
-                                              ]
-                                            ], :ok}
-                                         end
-                                     end), :ok}
-                                  end
-                              end), :ok}
-                           end
-                       end
-                     ), :ok}
-                  end
-              end), :ok}
-           end
-       end), :ok}
+              [
+                {:origin, DateTime.truncate(dt, precision)},
+                {:next, DateTime.truncate(next_dt, precision)},
+                {precision, DateTime.diff(next_dt, dt, precision)}
+              ]
+            end)
+            |> (& {&1, :ok}).()
+          end)
+          |> (& {&1, :ok}).()
+        end)
+        |> (& {&1, :ok}).()
+      end)
+      |> (& {&1, :ok}).()
     end)
 
     #    stream
