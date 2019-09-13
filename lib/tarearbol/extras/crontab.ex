@@ -65,7 +65,7 @@ defmodule Tarearbol.Crontab do
           day <- 1..dt.calendar.days_in_month(year, month),
           year > dt.year || month > dt.month || day >= dt.day,
           ct.day.eval.(day: day),
-          day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+          day_of_week <- [dt.calendar.day_of_week(year, month, day)],
           ct.day_of_week.eval.(day_of_week: day_of_week),
           hour <- 0..23,
           year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
@@ -131,23 +131,33 @@ defmodule Tarearbol.Crontab do
     %Tarearbol.Crontab{} = ct = input |> parse() |> prepare()
 
     # {stream, :ok} =
-    Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
+    [dt.year, dt.year + 1]
+    |> Stream.transform(:ok, fn year, :ok ->
       1..dt.calendar.months_in_year(year)
       |> Stream.drop_while(&match?(month when {year, month} < {dty, dtm}, &1))
-      |> Stream.reject(&ct.month.eval.(month: &1))
+      |> Stream.filter(&ct.month.eval.(month: &1))
       |> Stream.transform(:ok, fn month, :ok ->
         1..dt.calendar.days_in_month(year, month)
         |> Stream.drop_while(&match?(day when {year, month, day} < {dty, dtm, dtd}, &1))
-        |> Stream.reject(&ct.day.eval.(day: &1))
-        |> Stream.reject(&ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, &1)))
+        |> Stream.filter(&ct.day.eval.(day: &1))
+        |> Stream.filter(
+          &ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, &1))
+        )
         |> Stream.transform(:ok, fn day, :ok ->
           0..23
-          |> Stream.drop_while(&match?(hour when {year, month, day, hour} < {dty, dtm, dtd, dth}, &1))
-          |> Stream.reject(&ct.hour.eval.(hour: &1))
+          |> Stream.drop_while(
+            &match?(hour when {year, month, day, hour} < {dty, dtm, dtd, dth}, &1)
+          )
+          |> Stream.filter(&ct.hour.eval.(hour: &1))
           |> Stream.transform(:ok, fn hour, :ok ->
             0..59
-            |> Stream.drop_while(&match?(minute when {year, month, day, hour, minute} < {dty, dtm, dtd, dth, dtmin}, &1))
-            |> Stream.reject(&ct.minute.eval.(minute: &1))
+            |> Stream.drop_while(
+              &match?(
+                minute when {year, month, day, hour, minute} < {dty, dtm, dtd, dth, dtmin},
+                &1
+              )
+            )
+            |> Stream.filter(&ct.minute.eval.(minute: &1))
             |> Stream.map(fn minute ->
               next_dt = %DateTime{
                 year: year,
@@ -170,13 +180,13 @@ defmodule Tarearbol.Crontab do
                 {precision, DateTime.diff(next_dt, dt, precision)}
               ]
             end)
-            |> (& {&1, :ok}).()
+            |> (&{&1, :ok}).()
           end)
-          |> (& {&1, :ok}).()
+          |> (&{&1, :ok}).()
         end)
-        |> (& {&1, :ok}).()
+        |> (&{&1, :ok}).()
       end)
-      |> (& {&1, :ok}).()
+      |> (&{&1, :ok}).()
     end)
 
     #    stream
