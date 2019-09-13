@@ -1,0 +1,4 @@
+duration:1.0;mem stats:false;sys mem stats:false
+module;test;tags;iterations;elapsed
+Tarearbol.Crontab.Bench	list		5	1890417
+Tarearbol.Crontab.Bench	stream_am		50	1611748

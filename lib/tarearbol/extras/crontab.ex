@@ -36,13 +36,13 @@ defmodule Tarearbol.Crontab do
   def next(nil, input, opts), do: next(DateTime.utc_now(), input, opts)
 
   def next(%DateTime{} = dt, input, opts),
-    do: dt |> next_as_stream(input, opts) |> Enum.take(1) |> hd()
+    do: dt |> next_as_stream_am(input, opts) |> Enum.take(1) |> hd()
 
   @doc """
   Returns the _list_ of all the events after `dt` (default: `DateTime.utc_now/0`.)
 
   This function calculates the outcome greedily and, while it might be slightly
-  faster than `Tarearbol.Crontab.next_as_stream/3`, it should not be used for
+  faster than `Tarearbol.Crontab.next_as_stream_am/3`, it should not be used for
   frequently recurring cron records (like `"* * * * *"`.)
   """
   @spec next_as_list(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
@@ -65,7 +65,7 @@ defmodule Tarearbol.Crontab do
           day <- 1..dt.calendar.days_in_month(year, month),
           year > dt.year || month > dt.month || day >= dt.day,
           ct.day.eval.(day: day),
-          day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+          day_of_week <- [dt.calendar.day_of_week(year, month, day)],
           ct.day_of_week.eval.(day_of_week: day_of_week),
           hour <- 0..23,
           year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
@@ -108,14 +108,14 @@ defmodule Tarearbol.Crontab do
 
   See `Tarearbol.Crontab.next_as_list/3` for greedy evaluation.
   """
-  @spec next_as_stream(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
+  @spec next_as_stream_am(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
           Stream.t()
-  def next_as_stream(dt \\ nil, input, opts \\ [])
+  def next_as_stream_am(dt \\ nil, input, opts \\ [])
 
-  def next_as_stream(nil, input, opts),
-    do: next_as_stream(DateTime.utc_now(), input, opts)
+  def next_as_stream_am(nil, input, opts),
+    do: next_as_stream_am(DateTime.utc_now(), input, opts)
 
-  def next_as_stream(
+  def next_as_stream_am(
         %DateTime{
           year: dty,
           month: dtm,
@@ -149,7 +149,7 @@ defmodule Tarearbol.Crontab do
                     {[], :ok}
                   else
                     {Stream.transform(
-                       [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
+                       [dt.calendar.day_of_week(year, month, day)],
                        :ok,
                        fn
                          day_of_week, :ok ->
@@ -211,6 +211,85 @@ defmodule Tarearbol.Crontab do
     end)
 
     #    stream
+  end
+
+  def next_as_stream_st(dt \\ nil, input, opts \\ [])
+
+  def next_as_stream_st(nil, input, opts),
+    do: next_as_stream_st(DateTime.utc_now(), input, opts)
+
+  def next_as_stream_st(
+        %DateTime{
+          year: dty,
+          month: dtm,
+          day: dtd,
+          hour: dth,
+          minute: dtmin
+        } = dt,
+        input,
+        opts
+      ) do
+    precision = Keyword.get(opts, :precision, :second)
+
+    %Tarearbol.Crontab{} = ct = input |> parse() |> prepare()
+
+    [dt.year, dt.year + 1]
+    |> Stream.transform(:ok, fn year, :ok ->
+      1..dt.calendar.months_in_year(year)
+      |> Stream.drop_while(&match?(month when {year, month} < {dty, dtm}, &1))
+      |> Stream.filter(&ct.month.eval.(month: &1))
+      |> Stream.transform(:ok, fn month, :ok ->
+        1..dt.calendar.days_in_month(year, month)
+        |> Stream.drop_while(&match?(day when {year, month, day} < {dty, dtm, dtd}, &1))
+        |> Stream.filter(&ct.day.eval.(day: &1))
+        |> Stream.filter(
+          &ct.day_of_week.eval.(day_of_week: dt.calendar.day_of_week(year, month, &1))
+        )
+        |> Stream.transform(:ok, fn day, :ok ->
+          0..23
+          |> Stream.drop_while(
+            &match?(hour when {year, month, day, hour} < {dty, dtm, dtd, dth}, &1)
+          )
+          |> Stream.filter(&ct.hour.eval.(hour: &1))
+          |> Stream.transform(:ok, fn hour, :ok ->
+            0..59
+            |> Stream.drop_while(
+              &match?(
+                minute when {year, month, day, hour, minute} < {dty, dtm, dtd, dth, dtmin},
+                &1
+              )
+            )
+            |> Stream.filter(&ct.minute.eval.(minute: &1))
+            |> Stream.map(fn minute ->
+              next_dt = %DateTime{
+                year: year,
+                month: month,
+                day: day,
+                hour: hour,
+                minute: minute,
+                second: 0,
+                microsecond: dt.microsecond,
+                time_zone: dt.time_zone,
+                zone_abbr: dt.zone_abbr,
+                utc_offset: dt.utc_offset,
+                std_offset: dt.std_offset,
+                calendar: dt.calendar
+              }
+
+              [
+                {:origin, DateTime.truncate(dt, precision)},
+                {:next, DateTime.truncate(next_dt, precision)},
+                {precision, DateTime.diff(next_dt, dt, precision)}
+              ]
+            end)
+            |> (&{&1, :ok}).()
+          end)
+          |> (&{&1, :ok}).()
+        end)
+        |> (&{&1, :ok}).()
+      end)
+      |> (&{&1, :ok}).()
+    end)
   end
 
   @doc """

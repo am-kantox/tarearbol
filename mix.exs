@@ -41,6 +41,7 @@ defmodule Tarearbol.Mixfile do
       {:formulae, "~> 0.5"},
       {:credo, "~> 1.0", only: [:dev, :ci]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
+      {:benchfella, "~> 0.3", only: [:dev]},
       {:ex_doc, "~> 0.11", only: :dev},
       {:mock, "~> 0.2", only: [:test, :ci]},
       {:stream_data, "~> 0.4", only: [:test, :ci]}
