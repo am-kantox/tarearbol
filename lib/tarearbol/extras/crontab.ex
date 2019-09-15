@@ -56,6 +56,7 @@ defmodule Tarearbol.Crontab do
     precision = Keyword.get(opts, :precision, :second)
 
     %Tarearbol.Crontab{} = ct = prepare(input)
+    dom_or_dow = dom_or_dow_checker(input, ct)
 
     next_dts =
       for year <- [dt.year, dt.year + 1],
@@ -64,9 +65,8 @@ defmodule Tarearbol.Crontab do
           ct.month.eval.(month: month),
           day <- 1..dt.calendar.days_in_month(year, month),
           year > dt.year || month > dt.month || day >= dt.day,
-          ct.day.eval.(day: day),
-          day_of_week <- [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
-          ct.day_of_week.eval.(day_of_week: day_of_week),
+          day_of_week <- [dt.calendar.day_of_week(year, month, day)],
+          dom_or_dow.(day, day_of_week),
           hour <- 0..23,
           year > dt.year || month > dt.month || day > dt.day || hour >= dt.hour,
           ct.hour.eval.(hour: hour),
@@ -128,7 +128,8 @@ defmodule Tarearbol.Crontab do
       ) do
     precision = Keyword.get(opts, :precision, :second)
 
-    %Tarearbol.Crontab{} = ct = input |> parse() |> prepare()
+    %Tarearbol.Crontab{} = ct = prepare(input)
+    dom_or_dow = dom_or_dow_checker(input, ct)
 
     # {stream, :ok} =
     Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
@@ -145,65 +146,54 @@ defmodule Tarearbol.Crontab do
                   {[], :ok}
 
                 day, :ok ->
-                  if not ct.day.eval.(day: day) do
+                  unless dom_or_dow.(day, dt.calendar.day_of_week(year, month, day)) do
                     {[], :ok}
                   else
-                    {Stream.transform(
-                       [dt.calendar.day_of_week(dt.year, dt.month, dt.day)],
-                       :ok,
-                       fn
-                         day_of_week, :ok ->
-                           if not ct.day_of_week.eval.(day_of_week: day_of_week) do
-                             {[], :ok}
-                           else
-                             {Stream.transform(0..23, :ok, fn
-                                hour, :ok
-                                when year <= dty and month <= dtm and day <= dtd and hour < dth ->
+                    {Stream.transform(0..23, :ok, fn
+                       hour, :ok
+                       when year <= dty and month <= dtm and day <= dtd and hour < dth ->
+                         {[], :ok}
+
+                       hour, :ok ->
+                         if not ct.hour.eval.(hour: hour) do
+                           {[], :ok}
+                         else
+                           {Stream.transform(0..59, :ok, fn
+                              minute, :ok
+                              when year <= dty and month <= dtm and day <= dtd and
+                                     hour <= dth and minute < dtmin ->
+                                {[], :ok}
+
+                              minute, :ok ->
+                                if not ct.minute.eval.(minute: minute) do
                                   {[], :ok}
+                                else
+                                  next_dt = %DateTime{
+                                    year: year,
+                                    month: month,
+                                    day: day,
+                                    hour: hour,
+                                    minute: minute,
+                                    second: 0,
+                                    microsecond: dt.microsecond,
+                                    time_zone: dt.time_zone,
+                                    zone_abbr: dt.zone_abbr,
+                                    utc_offset: dt.utc_offset,
+                                    std_offset: dt.std_offset,
+                                    calendar: dt.calendar
+                                  }
 
-                                hour, :ok ->
-                                  if not ct.hour.eval.(hour: hour) do
-                                    {[], :ok}
-                                  else
-                                    {Stream.transform(0..59, :ok, fn
-                                       minute, :ok
-                                       when year <= dty and month <= dtm and day <= dtd and
-                                              hour <= dth and minute < dtmin ->
-                                         {[], :ok}
-
-                                       minute, :ok ->
-                                         if not ct.minute.eval.(minute: minute) do
-                                           {[], :ok}
-                                         else
-                                           next_dt = %DateTime{
-                                             year: year,
-                                             month: month,
-                                             day: day,
-                                             hour: hour,
-                                             minute: minute,
-                                             second: 0,
-                                             microsecond: dt.microsecond,
-                                             time_zone: dt.time_zone,
-                                             zone_abbr: dt.zone_abbr,
-                                             utc_offset: dt.utc_offset,
-                                             std_offset: dt.std_offset,
-                                             calendar: dt.calendar
-                                           }
-
-                                           {[
-                                              [
-                                                {:origin, DateTime.truncate(dt, precision)},
-                                                {:next, DateTime.truncate(next_dt, precision)},
-                                                {precision, DateTime.diff(next_dt, dt, precision)}
-                                              ]
-                                            ], :ok}
-                                         end
-                                     end), :ok}
-                                  end
-                              end), :ok}
-                           end
-                       end
-                     ), :ok}
+                                  {[
+                                     [
+                                       {:origin, DateTime.truncate(dt, precision)},
+                                       {:next, DateTime.truncate(next_dt, precision)},
+                                       {precision, DateTime.diff(next_dt, dt, precision)}
+                                     ]
+                                   ], :ok}
+                                end
+                            end), :ok}
+                         end
+                     end), :ok}
                   end
               end), :ok}
            end
@@ -470,6 +460,32 @@ defmodule Tarearbol.Crontab do
     |> case do
       {:error, reasons} -> {:error, reasons}
       {:ok, result} -> result |> Enum.reverse() |> Enum.join(" && ")
+    end
+  end
+
+  @spec dom_or_dow_checker(input :: binary(), ct :: t()) ::
+          (non_neg_integer(), non_neg_integer() -> boolean)
+  defp dom_or_dow_checker(input, ct) do
+    case String.split(input) do
+      [_, _, "*", _, "*"] ->
+        fn day, _day_of_week ->
+          ct.day.eval.(day: day)
+        end
+
+      [_, _, _, _, "*"] ->
+        fn day, _day_of_week ->
+          ct.day.eval.(day: day)
+        end
+
+      [_, _, "*", _, _] ->
+        fn _day, day_of_week ->
+          ct.day_of_week.eval.(day_of_week: day_of_week)
+        end
+
+      [_, _, _, _, _] ->
+        fn day, day_of_week ->
+          ct.day.eval.(day: day) or ct.day_of_week.eval.(day_of_week: day_of_week)
+        end
     end
   end
 
