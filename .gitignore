@@ -27,4 +27,6 @@ erl_crash.dump
 
 /.dialyzer/plts/*.plt*
 
+/bench/snapshots/*
+
 /.vscode/
