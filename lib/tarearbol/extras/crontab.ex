@@ -367,10 +367,17 @@ defmodule Tarearbol.Crontab do
   @spec parse_int(key :: atom(), s1 :: binary(), s2 :: binary()) :: binary() | {:error, any()}
   defp parse_int(key, s1, s2) do
     case {str_to_int(s1), str_to_int(s2)} do
-      {{:error, r1}, {:error, r2}} -> {:error, [r1, r2]}
-      {{:error, r1}, _} -> {:error, r1}
-      {_, {:error, r2}} -> {:error, r2}
-      {from, int} -> {:ok, "rem(#{@prefix}#{key}, #{int}) == 0 && #{@prefix}#{key} >= #{from}"}
+      {{:error, r1}, {:error, r2}} ->
+        {:error, [r1, r2]}
+
+      {{:error, r1}, _} ->
+        {:error, r1}
+
+      {_, {:error, r2}} ->
+        {:error, r2}
+
+      {from, int} ->
+        {:ok, "rem(#{@prefix}#{key}, #{int}) == #{rem(from, int)} && #{@prefix}#{key} >= #{from}"}
     end
   end
 
@@ -401,9 +408,9 @@ defmodule Tarearbol.Crontab do
 
       {from, till, int} ->
         {:ok,
-         "rem(#{@prefix}#{key}, #{int}) == 0 && #{@prefix}#{key} >= #{from} && #{@prefix}#{key} <= #{
-           till
-         }"}
+         "rem(#{@prefix}#{key}, #{int}) == #{rem(from, int)} && #{@prefix}#{key} >= #{from} && #{
+           @prefix
+         }#{key} <= #{till}"}
     end
   end
 
