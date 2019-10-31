@@ -109,7 +109,7 @@ defmodule Tarearbol.Crontab do
   See `Tarearbol.Crontab.next_as_list/3` for greedy evaluation.
   """
   @spec next_as_stream(dt :: nil | DateTime.t(), input :: binary(), opts :: keyword()) ::
-          Stream.t()
+          Enumerable.t()
   def next_as_stream(dt \\ nil, input, opts \\ [])
 
   def next_as_stream(nil, input, opts),

@@ -73,7 +73,7 @@ defmodule Tarearbol.DynamicWorker do
           id :: any(),
           result :: any(),
           timeout :: non_neg_integer()
-        ) :: :ok
+        ) :: reference()
   defp do_handle_work(state, id, result, timeout) do
     state.put(id, %{state.get(id) | value: result})
     schedule_work(timeout)

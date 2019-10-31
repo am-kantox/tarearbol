@@ -61,12 +61,12 @@ defmodule Tarearbol.Scheduler do
     defstruct [:name, :module, :runner, :schedule]
 
     @doc "The implementation to be run on schedule"
-    @callback run :: Tarearbol.DynamicManager.runner()
+    @callback run :: Tarearbol.Scheduler.runner()
 
     @doc "Produces a `Tarearbol.Scheduler.Job` by parameters given"
     @spec create(
             name :: binary(),
-            runner :: Tarearbol.DynamicManager.runner(),
+            runner :: Tarearbol.Scheduler.runner(),
             schedule :: binary()
           ) :: t()
     def create(name, runner, schedule) do

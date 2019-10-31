@@ -100,6 +100,7 @@ defmodule Tarearbol.DynamicManager do
 
   defmodule Child do
     @moduledoc false
+    @enforce_keys [:pid, :value]
     defstruct [:pid, :value]
   end
 
@@ -111,7 +112,7 @@ defmodule Tarearbol.DynamicManager do
       @spec namespace :: module()
       def namespace, do: @namespace
 
-      @spec child_mod(module :: module()) :: module()
+      @spec child_mod(module :: module() | list()) :: module()
       defp child_mod(module) when is_atom(module), do: child_mod(Module.split(module))
 
       defp child_mod(module) when is_list(module),
@@ -132,12 +133,17 @@ defmodule Tarearbol.DynamicManager do
 
           defstruct state: :down, children: %{}, manager: nil
 
-          @type t :: %{}
+          @type t :: %{
+                  __struct__: __MODULE__,
+                  state: :down | :up | :starting | :unknown,
+                  children: map(),
+                  manager: atom()
+                }
 
           def start_link(manager: manager),
             do: GenServer.start_link(__MODULE__, [manager: manager], name: __MODULE__)
 
-          @spec state :: State.t()
+          @spec state :: t()
           def state, do: GenServer.call(__MODULE__, :state)
 
           @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok

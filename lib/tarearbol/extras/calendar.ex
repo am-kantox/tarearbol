@@ -43,7 +43,7 @@ defmodule Tarearbol.Calendar do
       ~U[2018-12-31 23:59:59Z]
 
   """
-  @spec beginning_of(dt :: DateTime.t(), count :: integer(), atom()) :: DateTime.t()
+  @spec beginning_of(dt :: DateTime.t() | nil, count :: integer(), atom()) :: DateTime.t()
   def beginning_of(dt \\ nil, count \\ 0, what)
 
   ###################################  YEAR  ###################################
@@ -226,7 +226,7 @@ defmodule Tarearbol.Calendar do
 
   ###################################  END_OF  #################################
 
-  @spec end_of(dt :: DateTime.t(), count :: integer(), atom()) :: DateTime.t()
+  @spec end_of(dt :: DateTime.t() | nil, count :: integer(), atom()) :: DateTime.t()
   def end_of(dt \\ nil, n \\ 0, period)
 
   def end_of(dt, n, period) do
