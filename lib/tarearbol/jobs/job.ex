@@ -9,12 +9,12 @@ defmodule Tarearbol.Job do
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
-  @spec ensure(job :: job(), opts :: Keyword.t()) :: {:error, any()} | {:ok, any()}
+  @spec ensure(job :: job(), opts :: keyword()) :: {:error, any()} | {:ok, any()}
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     do_retry(job, Utils.opts(opts), attempts(opts))
   end
 
-  @spec ensure!(job :: job(), opts :: Keyword.t()) :: no_return() | {:error, any()} | {:ok, any()}
+  @spec ensure!(job :: job(), opts :: keyword()) :: no_return() | {:error, any()} | {:ok, any()}
   def ensure!(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
     case ensure(job, opts) do
       {:ok, result} ->
@@ -28,7 +28,7 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
-  @spec on_callback(any(), any(), binary(), Keyword.t()) :: any()
+  @spec on_callback(any(), any(), binary(), keyword()) :: any()
   defp on_callback(value, data, log_prefix \\ "JOB", level: level) do
     Tarearbol.Publisher.publish(level, value, data)
 
@@ -67,15 +67,15 @@ defmodule Tarearbol.Job do
     end
   end
 
-  @spec on_success(any(), any(), Keyword.t()) :: any()
+  @spec on_success(any(), any(), keyword()) :: any()
   defp on_success(value, data, level: level),
     do: on_callback(value, data, level: level)
 
-  @spec on_problem(any(), any(), binary(), Keyword.t()) :: any()
+  @spec on_problem(any(), any(), binary(), keyword()) :: any()
   defp on_problem(value, data, log_prefix, level: level),
     do: on_callback(value, data, log_prefix, level: level)
 
-  @spec delay(opts :: Keyword.t()) :: :ok
+  @spec delay(opts :: keyword()) :: :ok
   defp delay(opts) do
     opts
     |> Keyword.get(:delay, :infinity)

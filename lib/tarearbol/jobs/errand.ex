@@ -15,7 +15,7 @@ defmodule Tarearbol.Errand do
   @spec run_in(
           (() -> any()) | {module(), atom(), list()},
           Tarearbol.Utils.interval(),
-          Keyword.t()
+          keyword()
         ) :: Task.t()
   def run_in(job, interval, opts \\ opts()) do
     Tarearbol.Application.task!(fn ->
@@ -54,7 +54,7 @@ defmodule Tarearbol.Errand do
             :second => any(),
             any() => any()
           },
-          Keyword.t()
+          keyword()
         ) :: %Task{:owner => pid(), :pid => nil | pid(), :ref => reference()}
   def run_at(job, at, opts \\ opts())
 
@@ -85,15 +85,15 @@ defmodule Tarearbol.Errand do
   def run_at(job, at, opts) when is_binary(at), do: run_at(job, DateTime.from_iso8601(at), opts)
 
   @doc "Spawns the task by calling `run_in` with a zero interval"
-  @spec spawn((() -> any()) | {module(), atom(), list()}, Keyword.t()) :: Task.t()
+  @spec spawn((() -> any()) | {module(), atom(), list()}, keyword()) :: Task.t()
   def spawn(job, opts \\ opts()), do: run_in(job, :none, opts)
 
   ##############################################################################
 
-  @spec opts() :: Keyword.t()
+  @spec opts() :: keyword()
   defp opts, do: Application.get_env(:tarearbol, :errand_options, @default_opts)
 
-  @spec run_in_opts(Keyword.t()) :: Keyword.t()
+  @spec run_in_opts(keyword()) :: keyword()
   defp run_in_opts(opts), do: Keyword.delete(opts, :repeatedly)
 
   # to perform 25 times in 21 day

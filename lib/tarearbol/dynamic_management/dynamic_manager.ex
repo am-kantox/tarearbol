@@ -24,7 +24,7 @@ defmodule Tarearbol.DynamicManager do
 
       {:ok, pid} = DynamicManager.start_link()
 
-  The above would spawn `10` children with IDs `"foo1".."foo10"`.
+  The above would spawn `10` children with IDs `"foo_1".."foo_10"`.
 
   ---
 

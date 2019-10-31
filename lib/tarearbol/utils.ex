@@ -73,12 +73,12 @@ defmodule Tarearbol.Utils do
   ]
 
   @doc false
-  @spec opts(Keyword.t()) :: Keyword.t()
+  @spec opts(keyword()) :: keyword()
   def opts(opts),
     do: Keyword.merge(Application.get_env(:tarearbol, :job_options, @default_opts), opts)
 
   @doc false
-  @spec extract_opts(Keyword.t(), atom() | [atom()], any()) :: {any(), Keyword.t()}
+  @spec extract_opts(keyword(), atom() | [atom()], any()) :: {any(), keyword()}
   def extract_opts(opts, name, default \\ nil)
 
   def extract_opts(opts, name, default) when is_atom(name),
