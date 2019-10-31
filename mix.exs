@@ -4,13 +4,13 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.13.3"
+  @version "0.14.0"
 
   def project do
     [
       app: @app,
       version: @version,
-      elixir: "~> 1.5",
+      elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       package: package(),
       xref: [exclude: []],
