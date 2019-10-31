@@ -21,6 +21,8 @@ defmodule Tarearbol.Mixfile do
       docs: docs(),
       dialyzer: [
         plt_file: {:no_warn, ".dialyzer/plts/dialyzer.plt"},
+        plt_add_deps: :transitive,
+        plt_add_apps: [:mix],
         ignore_warnings: ".dialyzer/ignore.exs"
       ]
     ]

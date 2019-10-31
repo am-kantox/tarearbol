@@ -155,7 +155,7 @@ defmodule Tarearbol.Scheduler do
   """
   @spec push!(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
   def push!(name, runner, schedule) do
-    File.write!(config_file(), [{name, runner, schedule} | jobs()])
+    File.write!(config_file(), Macro.to_string([{name, runner, schedule} | jobs()]))
     push(name, runner, schedule)
   end
 
@@ -164,7 +164,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that survives restarts use `pop!/1`.
   """
-  @spec pop(name :: any()) :: map() | {:error, :not_found}
+  @spec pop(name :: any()) :: :ok
   def pop(name), do: Tarearbol.Scheduler.del(name)
 
   @doc """
@@ -172,9 +172,13 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that removes jobs temporarily, use `pop!/1`.
   """
-  @spec pop!(name :: any()) :: map() | {:error, :not_found}
+  @spec pop!(name :: any()) :: :ok
   def pop!(name) do
-    File.write!(config_file(), for({id, _, _} = job <- jobs(), id != name, do: job))
+    File.write!(
+      config_file(),
+      Macro.to_string(for({id, _, _} = job <- jobs(), id != name, do: job))
+    )
+
     pop(name)
   end
 
