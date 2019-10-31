@@ -266,7 +266,7 @@ defmodule Tarearbol.Crontab do
 
   #############################################################################
 
-  @spec do_parse(input :: binary(), {list[atom()], atom(), binary(), map()}) ::
+  @spec do_parse(input :: binary(), {[atom()], atom(), binary(), map()}) ::
           Tarearbol.Crontab.t()
 
   defp do_parse("@yearly", acc), do: do_parse("0 0 1 1 *", acc)
