@@ -195,13 +195,13 @@ defmodule Tarearbol.Scheduler do
   end
 
   @spec config :: keyword()
-  defp config(), do: Keyword.get(Mix.Project.config(), :tarearbol, [])
+  defp config, do: Keyword.get(Mix.Project.config(), :tarearbol, [])
 
   @spec config_file :: binary()
-  defp config_file(), do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
+  defp config_file, do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
 
   @spec jobs :: [{any(), runner(), binary()}]
-  defp jobs() do
+  defp jobs do
     Application.get_env(:tarearbol, :jobs, []) ++
       Keyword.get(config(), :jobs, []) ++
       if File.exists?(config_file()),

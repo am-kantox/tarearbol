@@ -140,6 +140,7 @@ defmodule Tarearbol.DynamicManager do
                   manager: atom()
                 }
 
+          @spec start_link([{:manager, atom()}]) :: GenServer.on_start()
           def start_link(manager: manager),
             do: GenServer.start_link(__MODULE__, [manager: manager], name: __MODULE__)
 

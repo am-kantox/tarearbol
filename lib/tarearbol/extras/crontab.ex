@@ -138,7 +138,7 @@ defmodule Tarearbol.Crontab do
            {[], :ok}
 
          month, :ok ->
-           if not ct.month.eval.(month: month) do
+           unless ct.month.eval.(month: month) do
              {[], :ok}
            else
              {Stream.transform(1..dt.calendar.days_in_month(year, month), :ok, fn
@@ -155,7 +155,7 @@ defmodule Tarearbol.Crontab do
                          {[], :ok}
 
                        hour, :ok ->
-                         if not ct.hour.eval.(hour: hour) do
+                         unless ct.hour.eval.(hour: hour) do
                            {[], :ok}
                          else
                            {Stream.transform(0..59, :ok, fn
@@ -165,7 +165,7 @@ defmodule Tarearbol.Crontab do
                                 {[], :ok}
 
                               minute, :ok ->
-                                if not ct.minute.eval.(minute: minute) do
+                                unless ct.minute.eval.(minute: minute) do
                                   {[], :ok}
                                 else
                                   next_dt = %DateTime{
