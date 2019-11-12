@@ -18,6 +18,7 @@ defmodule Tarearbol.Scheduler do
 
   Upon starts it looks up `:tarearbol` section of `Mix.Project` for
   `:jobs` and `:jobs_file` keys. The latter has a default `.tarearbol.exs`.
+  This won’t work with releases.
 
   Also it looks up `:tarearbol, :jobs` section of `config.exs`. Everything found
   is unioned. Jobs with the same names are overriden, the file has precedence
@@ -195,7 +196,9 @@ defmodule Tarearbol.Scheduler do
   end
 
   @spec config :: keyword()
-  defp config, do: Keyword.get(Mix.Project.config(), :tarearbol, [])
+  defp config,
+    do:
+      if(Code.ensure_loaded?(Mix), do: Keyword.get(Mix.Project.config(), :tarearbol, []), else: [])
 
   @spec config_file :: binary()
   defp config_file, do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
