@@ -12,6 +12,7 @@ defmodule Tarearbol.Mixfile do
       version: @version,
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       package: package(),
       xref: [exclude: []],
       description: description(),
@@ -41,6 +42,8 @@ defmodule Tarearbol.Mixfile do
     [
       {:envio, "~> 0.5"},
       {:formulae, "~> 0.5"},
+      {:cloister, path: "../../Elixir/cloister"},
+      # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
       {:benchfella, "~> 0.3", only: [:dev]},
@@ -118,4 +121,8 @@ defmodule Tarearbol.Mixfile do
       ]
     ]
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:dev), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end

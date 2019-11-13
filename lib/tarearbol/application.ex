@@ -8,7 +8,8 @@ defmodule Tarearbol.Application do
   def start(_type, _args) do
     children = [
       {Task.Supervisor, [name: Tarearbol.Application]},
-      {Tarearbol.Cron, []}
+      {Tarearbol.Cron, []},
+      {Tarearbol.Metronome, []}
     ]
 
     opts = [strategy: :one_for_one, name: Tarearbol.Supervisor]
