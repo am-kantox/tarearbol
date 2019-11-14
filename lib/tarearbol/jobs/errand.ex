@@ -40,19 +40,11 @@ defmodule Tarearbol.Errand do
   Runs the task either once at the specified `%DateTime{}` or repeatedly
     at the specified `%Time{}`.
   """
-  @spec run_at(
-          Tarearbol.Job.job(),
-          %{
-            :__struct__ => DateTime | Time,
-            :calendar => atom(),
-            :hour => any(),
-            :microsecond => any(),
-            :minute => any(),
-            :second => any(),
-            any() => any()
-          },
-          keyword()
-        ) :: %Task{:owner => pid(), :pid => nil | pid(), :ref => reference()}
+  @spec run_at(Tarearbol.Job.job(), %DateTime{}, keyword()) :: %Task{
+          :owner => pid(),
+          :pid => nil | pid(),
+          :ref => reference()
+        }
   def run_at(job, at, opts \\ opts())
 
   def run_at(job, %DateTime{} = at, opts) do
