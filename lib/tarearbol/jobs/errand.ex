@@ -20,13 +20,10 @@ defmodule Tarearbol.Errand do
   def run_in(job, interval, opts \\ opts()) do
     Tarearbol.Application.task!(fn ->
       waiting_time = Tarearbol.Utils.interval(interval, value: 0)
-      task_details = {job, interval_to_datetime(waiting_time), opts}
 
       Process.put(:job, {job, Tarearbol.Utils.add_interval(interval), opts})
-      Tarearbol.Cron.put_task(task_details)
       Process.sleep(waiting_time)
       result = Tarearbol.Job.ensure(job, opts)
-      Tarearbol.Cron.del_task(task_details)
       Process.delete(:job)
 
       cond do
@@ -95,20 +92,4 @@ defmodule Tarearbol.Errand do
 
   @spec run_in_opts(keyword()) :: keyword()
   defp run_in_opts(opts), do: Keyword.delete(opts, :repeatedly)
-
-  # to perform 25 times in 21 day
-  # @mike_perham_const 1.15647559215
-
-  # @spec sidekiq_interval(integer()) :: integer()
-  # defp sidekiq_interval(interval) when interval <= 0, do: 0
-
-  # defp sidekiq_interval(interval),
-  #   do: @mike_perham_const * interval * :math.atan(:math.log(interval))
-
-  defp interval_to_datetime(msecs) do
-    DateTime.utc_now()
-    |> DateTime.to_unix(:millisecond)
-    |> Kernel.+(msecs)
-    |> DateTime.from_unix!(:millisecond)
-  end
 end

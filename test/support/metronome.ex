@@ -3,7 +3,7 @@ defmodule Tarearbol.Metronome do
   use Tarearbol.DynamicManager
 
   def children_specs do
-    for id <- ?a..?d, into: %{}, do: {<<id>>, [timeout: 1_000]}
+    for id <- ?a..?c, into: %{}, do: {<<id>>, [timeout: 2_000]}
   end
 
   def perform(id, _) do

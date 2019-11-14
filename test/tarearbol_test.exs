@@ -4,12 +4,6 @@ defmodule Tarearbol.Test do
   use ExUnit.Case
   doctest Tarearbol
 
-  setup do
-    Tarearbol.Cron.clear!()
-    # {:ok, pid} = Tarearbol.Subscriber.start_link
-    # %{pid: pid}
-  end
-
   test "responds with :not_found on a non-existing child" do
     assert {:error, :not_found} == Tarearbol.Application.kill(self())
   end

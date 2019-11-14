@@ -21,9 +21,13 @@ defmodule Tarearbol.Scheduler.Test do
 
     job = Tarearbol.Scheduler.Job.create(TestJob, &PingPong.run/0, "* * * * *")
 
-    {:ok, pid} = Tarearbol.Scheduler.start_link()
+    case Tarearbol.Scheduler.start_link() do
+      {:ok, pid} -> :ok
+      {:error, {:already_started, pid}} -> :ok
+      _ -> assert false
+    end
+
     Tarearbol.Scheduler.put("TestJob", %{payload: %{job: job}, timeout: 50})
     assert_receive "pong", 200
-    GenServer.stop(pid)
   end
 end
