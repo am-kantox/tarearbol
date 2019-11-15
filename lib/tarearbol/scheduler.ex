@@ -54,7 +54,7 @@ defmodule Tarearbol.Scheduler do
   Type of possible job schedules: binary cron format, `Time` to be executed once
   `DateTime` for the daily execution
   """
-  @type schedule :: binary() | DateTime.t() | Time.t()
+  @type schedule :: binary() | DateTime.t() | Time.t() | non_neg_integer()
 
   defmodule Job do
     @moduledoc """
@@ -77,17 +77,41 @@ defmodule Tarearbol.Scheduler do
             schedule :: Tarearbol.Scheduler.schedule()
           ) :: t()
     def create(name, runner, schedule) do
+      {once?, schedule} =
+        case schedule do
+          secs when is_integer(secs) ->
+            {true, Macro.escape(DateTime.add(DateTime.utc_now(), schedule))}
+
+          %Time{} ->
+            {false, Tarearbol.Crontab.to_cron(schedule)}
+
+          %DateTime{} = hour_x ->
+            {true, Macro.escape(hour_x)}
+
+          crontab when is_binary(crontab) ->
+            {false, crontab}
+        end
+
       run_ast =
         case runner do
           {m, f} ->
-            quote do: def(run, do: apply(unquote(m), unquote(f), []))
+            quote do
+              def run do
+                result = apply(unquote(m), unquote(f), [])
+                if unquote(once?), do: :halt, else: {:ok, result}
+              end
+            end
 
           f when is_function(f, 0) ->
             f = Macro.escape(f)
-            quote do: def(run, do: unquote(f).())
-        end
 
-      schedule = Macro.escape(schedule)
+            quote do
+              def run do
+                result = unquote(f).()
+                if unquote(once?), do: :halt, else: {:ok, result}
+              end
+            end
+        end
 
       ast = [
         quote do
@@ -110,9 +134,6 @@ defmodule Tarearbol.Scheduler do
            do: module.job()
     end
   end
-
-  # seconds
-  @threshold 60
 
   @impl Tarearbol.DynamicManager
   def children_specs,
@@ -210,10 +231,11 @@ defmodule Tarearbol.Scheduler do
   defp timeout(%DateTime{} = schedule),
     do: DateTime.diff(schedule, DateTime.utc_now(), :millisecond)
 
-  defp timeout(%Time{} = schedule) do
-    diff = Time.diff(schedule, DateTime.to_time(DateTime.utc_now()), :millisecond)
-    if diff <= @threshold, do: diff + 24 * 60 * 60 * 1_000, else: diff
-  end
+  # @spec wrap_runner(runner :: runner(), schedule :: schedule()) :: runner()
+  # defp wrap_runner(runner, schedule) when is_binary(schedule), do: runner
+  # defp wrap_runner(runner, %DateTime{} = schedule), do:
+  #   runner
+  # end
 
   @spec config :: keyword()
   defp config,
@@ -223,7 +245,7 @@ defmodule Tarearbol.Scheduler do
   @spec config_file :: binary()
   defp config_file, do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
 
-  @spec jobs :: [{any(), runner(), binary()}]
+  @spec jobs :: [{any(), runner(), schedule()}]
   defp jobs do
     Application.get_env(:tarearbol, :jobs, []) ++
       Keyword.get(config(), :jobs, []) ++

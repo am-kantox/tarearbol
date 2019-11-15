@@ -226,7 +226,7 @@ defmodule Tarearbol.DynamicManager do
             "to perform some actual work instead of printing this message"
         )
 
-        if Enum.random(1..3) == 1, do: :halt, else: :ok
+        if Enum.random(1..3) == 1, do: :halt, else: {:ok, 42}
       end
 
       defoverridable perform: 2
