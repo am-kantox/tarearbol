@@ -90,15 +90,15 @@ defmodule Tarearbol.Test do
     assert_received :yo
     assert Enum.count(Tarearbol.Application.children()) == count
 
-    # dets
-    count = Enum.count(Tarearbol.Cron.jobs())
-    Tarearbol.Errand.run_in({Tarearbol.Runner, :yo!, [self()]}, 100)
-    Process.sleep(50)
-    assert Enum.count(Tarearbol.Cron.jobs()) == count + 1
-    assert Tarearbol.Cron.jobs() == Tarearbol.Application.jobs()
-    Process.sleep(100)
-    assert_received :yo
-    assert Enum.count(Tarearbol.Cron.jobs()) == count
+    # # dets
+    # count = Enum.count(Tarearbol.Cron.jobs())
+    # Tarearbol.Errand.run_in({Tarearbol.Runner, :yo!, [self()]}, 100)
+    # Process.sleep(50)
+    # assert Enum.count(Tarearbol.Cron.jobs()) == count + 1
+    # assert Tarearbol.Cron.jobs() == Tarearbol.Application.jobs()
+    # Process.sleep(100)
+    # assert_received :yo
+    # assert Enum.count(Tarearbol.Cron.jobs()) == count
   end
 
   @tag :skip

@@ -13,7 +13,6 @@ defmodule Tarearbol.Scheduler.Test do
     defmodule PingPong do
       @pid :erlang.term_to_binary(self())
       def run() do
-        IO.inspect("PONG")
         send(:erlang.binary_to_term(@pid), "pong")
         :halt
       end
@@ -22,8 +21,8 @@ defmodule Tarearbol.Scheduler.Test do
     job = Tarearbol.Scheduler.Job.create(TestJob, &PingPong.run/0, "* * * * *")
 
     case Tarearbol.Scheduler.start_link() do
-      {:ok, pid} -> :ok
-      {:error, {:already_started, pid}} -> :ok
+      {:ok, _pid} -> :ok
+      {:error, {:already_started, _pid}} -> :ok
       _ -> assert false
     end
 

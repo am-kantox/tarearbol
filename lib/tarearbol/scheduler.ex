@@ -171,7 +171,7 @@ defmodule Tarearbol.Scheduler do
   end
 
   @spec active_jobs :: %{atom() => %Tarearbol.DynamicManager.Child{}}
-  def active_jobs, do: state()[:children]
+  def active_jobs, do: state().children
 
   @doc """
   Creates and temporarily pushes the job to the list of currently scheduled jobs.
