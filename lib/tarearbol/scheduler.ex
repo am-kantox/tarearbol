@@ -50,6 +50,12 @@ defmodule Tarearbol.Scheduler do
   @type runner ::
           {atom(), atom()} | (() -> :halt | {:ok, any()} | {{:reschedule, binary()}, any()})
 
+  @typedoc """
+  Type of possible job schedules: binary cron format, `Time` to be executed once
+  `DateTime` for the daily execution
+  """
+  @type schedule :: binary() | DateTime.t() | Time.t()
+
   defmodule Job do
     @moduledoc """
     A struct holding the job description. Used internally by `Tarearbol.Scheduler`
@@ -68,14 +74,20 @@ defmodule Tarearbol.Scheduler do
     @spec create(
             name :: binary(),
             runner :: Tarearbol.Scheduler.runner(),
-            schedule :: binary()
+            schedule :: Tarearbol.Scheduler.schedule()
           ) :: t()
     def create(name, runner, schedule) do
       run_ast =
         case runner do
-          {m, f} -> quote do: def(run, do: apply(unquote(m), unquote(f), []))
-          f when is_function(f, 0) -> quote do: def(run, do: unquote(f).())
+          {m, f} ->
+            quote do: def(run, do: apply(unquote(m), unquote(f), []))
+
+          f when is_function(f, 0) ->
+            f = Macro.escape(f)
+            quote do: def(run, do: unquote(f).())
         end
+
+      schedule = Macro.escape(schedule)
 
       ast = [
         quote do
@@ -99,6 +111,9 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
+  # seconds
+  @threshold 60
+
   @impl Tarearbol.DynamicManager
   def children_specs,
     do: for({name, runner, schedule} <- jobs(), into: %{}, do: job!(name, runner, schedule))
@@ -121,10 +136,7 @@ defmodule Tarearbol.Scheduler do
 
         Tarearbol.Publisher.publish(:slack, :info, data)
 
-        {{:timeout,
-          Tarearbol.Crontab.next(DateTime.utc_now(), job.schedule, precision: :millisecond)[
-            :millisecond
-          ]}, result}
+        {{:timeout, timeout(job.schedule)}, result}
 
       {{:reschedule, schedule}, result} ->
         data =
@@ -142,7 +154,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that survives restarts use `push!/3`.
   """
-  @spec push(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
+  @spec push(name :: any(), runner :: runner(), schedule :: schedule()) :: pid()
   def push(name, runner, schedule) do
     {name, opts} = job!(name, runner, schedule)
     Tarearbol.Scheduler.put(name, opts)
@@ -154,7 +166,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that temporarily pushes a job, use `push/3`.
   """
-  @spec push!(name :: any(), runner :: runner(), schedule :: binary()) :: pid()
+  @spec push!(name :: any(), runner :: runner(), schedule :: schedule()) :: pid()
   def push!(name, runner, schedule) do
     File.write!(config_file(), Macro.to_string([{name, runner, schedule} | jobs()]))
     push(name, runner, schedule)
@@ -183,16 +195,24 @@ defmodule Tarearbol.Scheduler do
     pop(name)
   end
 
-  @spec job!(name :: any(), runner :: runner(), schedule :: binary()) :: {binary(), map()}
+  @spec job!(name :: any(), runner :: runner(), schedule :: schedule()) :: {binary(), map()}
   defp job!(name, runner, schedule) do
     job = Job.create(name, runner, schedule)
 
-    timeout =
-      Tarearbol.Crontab.next(DateTime.utc_now(), job.schedule, precision: :millisecond)[
-        :millisecond
-      ]
+    {name, %{payload: %{job: job}, timeout: timeout(job.schedule)}}
+  end
 
-    {name, %{payload: %{job: job}, timeout: timeout}}
+  @spec timeout(schedule :: schedule()) :: non_neg_integer()
+  defp timeout(schedule) when is_binary(schedule),
+    do:
+      Tarearbol.Crontab.next(DateTime.utc_now(), schedule, precision: :millisecond)[:millisecond]
+
+  defp timeout(%DateTime{} = schedule),
+    do: DateTime.diff(schedule, DateTime.utc_now(), :millisecond)
+
+  defp timeout(%Time{} = schedule) do
+    diff = Time.diff(schedule, DateTime.to_time(DateTime.utc_now()), :millisecond)
+    if diff <= @threshold, do: diff + 24 * 60 * 60 * 1_000, else: diff
   end
 
   @spec config :: keyword()
