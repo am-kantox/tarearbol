@@ -101,7 +101,7 @@ defmodule Tarearbol.DynamicManager do
   defmodule Child do
     @moduledoc false
     @enforce_keys [:pid, :value]
-    defstruct [:pid, :value]
+    defstruct [:pid, :value, :opts]
   end
 
   @doc false

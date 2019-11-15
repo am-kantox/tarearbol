@@ -64,7 +64,7 @@ defmodule Tarearbol.InternalWorker do
          opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
       )
 
-    manager.state_module().put(id, %{pid: name})
+    manager.state_module().put(id, %{pid: name, opts: opts})
     pid
   end
 
