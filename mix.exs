@@ -42,7 +42,7 @@ defmodule Tarearbol.Mixfile do
     [
       {:envio, "~> 0.5"},
       {:formulae, "~> 0.5"},
-      {:cloister, path: "../../Elixir/cloister"},
+      {:cloister, "~> 0.1"},
       # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
