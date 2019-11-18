@@ -20,13 +20,10 @@ defmodule Tarearbol.Errand do
   def run_in(job, interval, opts \\ opts()) do
     Tarearbol.Application.task!(fn ->
       waiting_time = Tarearbol.Utils.interval(interval, value: 0)
-      task_details = {job, interval_to_datetime(waiting_time), opts}
 
       Process.put(:job, {job, Tarearbol.Utils.add_interval(interval), opts})
-      Tarearbol.Cron.put_task(task_details)
       Process.sleep(waiting_time)
       result = Tarearbol.Job.ensure(job, opts)
-      Tarearbol.Cron.del_task(task_details)
       Process.delete(:job)
 
       cond do
@@ -43,19 +40,11 @@ defmodule Tarearbol.Errand do
   Runs the task either once at the specified `%DateTime{}` or repeatedly
     at the specified `%Time{}`.
   """
-  @spec run_at(
-          Tarearbol.Job.job(),
-          %{
-            :__struct__ => DateTime | Time,
-            :calendar => atom(),
-            :hour => any(),
-            :microsecond => any(),
-            :minute => any(),
-            :second => any(),
-            any() => any()
-          },
-          keyword()
-        ) :: %Task{:owner => pid(), :pid => nil | pid(), :ref => reference()}
+  @spec run_at(Tarearbol.Job.job(), %DateTime{}, keyword()) :: %Task{
+          :owner => pid(),
+          :pid => nil | pid(),
+          :ref => reference()
+        }
   def run_at(job, at, opts \\ opts())
 
   def run_at(job, %DateTime{} = at, opts) do
@@ -95,20 +84,4 @@ defmodule Tarearbol.Errand do
 
   @spec run_in_opts(keyword()) :: keyword()
   defp run_in_opts(opts), do: Keyword.delete(opts, :repeatedly)
-
-  # to perform 25 times in 21 day
-  # @mike_perham_const 1.15647559215
-
-  # @spec sidekiq_interval(integer()) :: integer()
-  # defp sidekiq_interval(interval) when interval <= 0, do: 0
-
-  # defp sidekiq_interval(interval),
-  #   do: @mike_perham_const * interval * :math.atan(:math.log(interval))
-
-  defp interval_to_datetime(msecs) do
-    DateTime.utc_now()
-    |> DateTime.to_unix(:millisecond)
-    |> Kernel.+(msecs)
-    |> DateTime.from_unix!(:millisecond)
-  end
 end

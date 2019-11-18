@@ -101,7 +101,7 @@ defmodule Tarearbol.DynamicManager do
   defmodule Child do
     @moduledoc false
     @enforce_keys [:pid, :value]
-    defstruct [:pid, :value]
+    defstruct [:pid, :value, :opts]
   end
 
   @doc false
@@ -137,7 +137,7 @@ defmodule Tarearbol.DynamicManager do
                   __struct__: __MODULE__,
                   state: :down | :up | :starting | :unknown,
                   children: map(),
-                  manager: atom()
+                  manager: module()
                 }
 
           @spec start_link([{:manager, atom()}]) :: GenServer.on_start()
@@ -202,10 +202,16 @@ defmodule Tarearbol.DynamicManager do
             do: {:noreply, %{state | state: new_state}}
         end
 
-      Module.create(Module.concat(@namespace, State), state_module_ast, __ENV__)
+      @state_module Module.concat(@namespace, State)
+      Module.create(@state_module, state_module_ast, __ENV__)
+
+      @doc false
+      @spec state :: struct()
+      def state, do: @state_module.state()
+
       @doc false
       @spec state_module :: module()
-      def state_module, do: Module.concat(@namespace, State)
+      def state_module, do: @state_module
 
       require Logger
 
@@ -220,7 +226,7 @@ defmodule Tarearbol.DynamicManager do
             "to perform some actual work instead of printing this message"
         )
 
-        if Enum.random(1..3) == 1, do: :halt, else: :ok
+        if Enum.random(1..3) == 1, do: :halt, else: {:ok, 42}
       end
 
       defoverridable perform: 2
@@ -248,14 +254,14 @@ defmodule Tarearbol.DynamicManager do
       def init(opts) do
         children = [
           {Registry, [keys: :unique, name: Module.concat(@namespace, Registry)]},
-          {state_module(), [manager: __MODULE__]},
+          {@state_module, [manager: __MODULE__]},
           {Tarearbol.DynamicSupervisor, Keyword.put(opts, :manager, __MODULE__)},
           {Tarearbol.InternalWorker, [manager: __MODULE__]}
         ]
 
         Logger.info(
           "Starting #{inspect(__MODULE__)} with following children:\n" <>
-            "    State → #{inspect(state_module())}\n" <>
+            "    State → #{inspect(@state_module)}\n" <>
             "    DynamicSupervisor → #{inspect(dynamic_supervisor_module())}\n" <>
             "    InternalWorker → #{inspect(internal_worker_module())}"
         )
@@ -270,10 +276,23 @@ defmodule Tarearbol.DynamicManager do
       def put(id, opts), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, opts)
 
       @doc """
+      Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
+      behaviour to the list of supervised children on all the nodes managed by `Cloister`
+      """
+      def multiput(id, opts),
+        do: Tarearbol.InternalWorker.multiput(internal_worker_module(), id, opts)
+
+      @doc """
       Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
       behaviour from the list of supervised children
       """
       def del(id), do: Tarearbol.InternalWorker.del(internal_worker_module(), id)
+
+      @doc """
+      Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
+      behaviour from the list of supervised children on all the nodes managed by `Cloister`
+      """
+      def multidel(id), do: Tarearbol.InternalWorker.multidel(internal_worker_module(), id)
 
       @doc """
       Retrieves the information (`payload`, `timeout`, `lull` etc.) assotiated with

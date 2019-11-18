@@ -9,11 +9,19 @@ defmodule Tarearbol.InternalWorker do
   @impl GenServer
   def init(opts), do: {:ok, opts, {:continue, :init}}
 
-  @spec put(module_name :: module(), id :: binary(), opts :: Enum.t()) :: pid()
-  def put(module_name, id, opts), do: GenServer.call(module_name, {:put, id, opts})
+  @spec put(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :ok
+  def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
+
+  @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :abcast
+  def multiput(module_name, id, opts),
+    do: Cloister.multicast(module_name, {:put, id, opts})
 
   @spec del(module_name :: module(), id :: binary()) :: :ok
-  def del(module_name, id), do: GenServer.call(module_name, {:del, id})
+  def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
+
+  @spec multidel(module_name :: module(), id :: binary()) :: :abcast
+  def multidel(module_name, id),
+    do: Cloister.multicast(module_name, {:del, id})
 
   @spec get(module_name :: module(), id :: binary()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})
@@ -28,12 +36,16 @@ defmodule Tarearbol.InternalWorker do
   end
 
   @impl GenServer
-  def handle_call({:put, id, opts}, _from, [manager: manager] = state),
-    do: {:reply, do_put(manager, {id, opts}), state}
+  def handle_cast({:put, id, opts}, [manager: manager] = state) do
+    do_put(manager, {id, opts})
+    {:noreply, state}
+  end
 
   @impl GenServer
-  def handle_call({:del, id}, _from, [manager: manager] = state),
-    do: {:reply, do_del(manager, id), state}
+  def handle_cast({:del, id}, [manager: manager] = state) do
+    do_del(manager, id)
+    {:noreply, state}
+  end
 
   @impl GenServer
   def handle_call({:get, id}, _from, [manager: manager] = state),
@@ -52,7 +64,7 @@ defmodule Tarearbol.InternalWorker do
          opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
       )
 
-    manager.state_module().put(id, %{pid: name})
+    manager.state_module().put(id, %{pid: name, opts: opts})
     pid
   end
 

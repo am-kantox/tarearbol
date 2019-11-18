@@ -50,7 +50,7 @@ defmodule Tarearbol.DynamicManager.Test do
       def children_specs, do: %{@pid => [timeout: 100]}
 
       def perform(i, _),
-        do: send(:erlang.binary_to_term(i), "pong")
+        do: {:ok, send(:erlang.binary_to_term(i), "pong")}
     end
 
     {:ok, pid3} = PingPong3.start_link()
@@ -61,6 +61,7 @@ defmodule Tarearbol.DynamicManager.Test do
     assert map_size(PingPong3.state_module().state().children) == 1
     assert_receive "pong", 200
     PingPong3.del(:erlang.term_to_binary(self()))
+    Process.sleep(10)
     assert map_size(PingPong3.state_module().state().children) == 0
     GenServer.stop(pid3)
   end

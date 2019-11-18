@@ -7,6 +7,10 @@ defmodule Tarearbol.Crontab do
   @type t :: %__MODULE__{}
   defstruct [:minute, :hour, :day, :month, :day_of_week]
 
+  @doc "Converts the `Time` instance into daily-execution cron string"
+  @spec to_cron(dt :: Time.t()) :: binary()
+  def to_cron(%Time{minute: minute, hour: hour}), do: "#{minute} #{hour} * * *"
+
   @prefix ""
 
   @doc """

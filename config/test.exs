@@ -1,4 +1,4 @@
-use Mix.Config
+import Config
 
 # config :envio, :backends, %{
 #   Envio.Slack => %{
