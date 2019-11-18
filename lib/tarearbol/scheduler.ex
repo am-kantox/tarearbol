@@ -48,13 +48,13 @@ defmodule Tarearbol.Scheduler do
   returning one of the outcomes below
   """
   @type runner ::
-          {atom(), atom()} | (() -> :halt | {:ok, any()} | {{:reschedule, binary()}, any()})
+          {atom(), atom()} | (() -> :halt | {:ok | {:reschedule, binary()}, any()})
 
   @typedoc """
   Type of possible job schedules: binary cron format, `Time` to be executed once
   `DateTime` for the daily execution
   """
-  @type schedule :: binary() | DateTime.t() | Time.t() | non_neg_integer()
+  @type schedule :: binary() | non_neg_integer() | DateTime.t() | Time.t()
 
   defmodule Job do
     @moduledoc """
@@ -178,7 +178,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that survives restarts use `push!/3`.
   """
-  @spec push(name :: any(), runner :: runner(), schedule :: schedule()) :: pid()
+  @spec push(name :: binary(), runner :: runner(), schedule :: schedule()) :: :ok
   def push(name, runner, schedule) do
     {name, opts} = job!(name, runner, schedule)
     Tarearbol.Scheduler.put(name, opts)
@@ -190,7 +190,7 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that temporarily pushes a job, use `push/3`.
   """
-  @spec push!(name :: any(), runner :: runner(), schedule :: schedule()) :: pid()
+  @spec push!(name :: binary(), runner :: runner(), schedule :: schedule()) :: :ok
   def push!(name, runner, schedule) do
     File.write!(config_file(), Macro.to_string([{name, runner, schedule} | jobs()]))
     push(name, runner, schedule)

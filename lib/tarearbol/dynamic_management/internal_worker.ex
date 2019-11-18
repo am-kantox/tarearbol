@@ -12,14 +12,14 @@ defmodule Tarearbol.InternalWorker do
   @spec put(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :ok
   def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
 
-  @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :ok
+  @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :abcast
   def multiput(module_name, id, opts),
     do: Cloister.multicast(module_name, {:put, id, opts})
 
   @spec del(module_name :: module(), id :: binary()) :: :ok
   def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
 
-  @spec multidel(module_name :: module(), id :: binary()) :: :ok
+  @spec multidel(module_name :: module(), id :: binary()) :: :abcast
   def multidel(module_name, id),
     do: Cloister.multicast(module_name, {:del, id})
 
