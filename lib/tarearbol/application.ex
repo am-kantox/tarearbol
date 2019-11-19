@@ -7,8 +7,7 @@ defmodule Tarearbol.Application do
           {:error, any()} | {:ok, pid()} | {:ok, pid(), any()}
   def start(_type, _args) do
     children = [
-      {Task.Supervisor, [name: Tarearbol.Application]},
-      Tarearbol.Scheduler
+      {Task.Supervisor, [name: Tarearbol.Application]}
       # {Tarearbol.Metronome, []}
     ]
 
