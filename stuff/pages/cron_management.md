@@ -10,7 +10,7 @@ Jobs description are loaded upon application start from one of the following loc
 - `config` entry in `Config` script, key `:tarearbol`, subkey `:jobs`
 - `.tarearbol.exs` file in the root folder of the target project (the path to the file might be configured in `project` section  of the `Mix.Project`, key `:tarearbol`, subkey `:jobs_file`)
 
-`Tarearbol.Scheduler` undertands `cron` format. It exports three handy methods methods from `Tarearbol.Crontab` module, `Tarearbol.Crontab.next/3`, `Tarearbol.Crontab.next_as_stream/3` and `Tarearbol.Crontab.next_as_list/3`. The firts might be used to get the timestamp of the _next_ event by cron record, the second to greedy evaluate all the next events for the year and the last one to return a `Stream` lazily evaluating next events.
+`Tarearbol.Scheduler` understands `cron` format. It exports three handy methods from `Tarearbol.Crontab` module, `Tarearbol.Crontab.next/3`, `Tarearbol.Crontab.next_as_stream/3` and `Tarearbol.Crontab.next_as_list/3`. The first might be used to get the timestamp of the _next_ event by cron record, the second to greedy evaluate all the next events for the year and the last one to return a `Stream` lazily evaluating next events.
 
 ---
 
