@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.99.1"
+  @version "0.99.2"
 
   def project do
     [
@@ -13,13 +13,19 @@ defmodule Tarearbol.Mixfile do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      preferred_cli_env: ["test.cluster": :test],
       package: package(),
-      xref: [exclude: []],
       description: description(),
       deps: deps(),
       aliases: aliases(),
       xref: [exclude: []],
       docs: docs(),
+      releases: [
+        {@app, [
+          include_executables_for: [:unix],
+          applications: [logger: :permanent, envio: :permanent]
+        ]}
+      ],
       dialyzer: [
         plt_file: {:no_warn, ".dialyzer/plts/dialyzer.plt"},
         plt_add_deps: :transitive,
