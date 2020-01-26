@@ -21,10 +21,11 @@ defmodule Tarearbol.Mixfile do
       xref: [exclude: []],
       docs: docs(),
       releases: [
-        {@app, [
-          include_executables_for: [:unix],
-          applications: [logger: :permanent, envio: :permanent]
-        ]}
+        {@app,
+         [
+           include_executables_for: [:unix],
+           applications: [logger: :permanent, envio: :permanent]
+         ]}
       ],
       dialyzer: [
         plt_file: {:no_warn, ".dialyzer/plts/dialyzer.plt"},
