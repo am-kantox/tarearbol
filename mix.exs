@@ -13,7 +13,7 @@ defmodule Tarearbol.Mixfile do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      preferred_cli_env: ["test.cluster": :test],
+      preferred_cli_env: ["test.cluster": :ci],
       package: package(),
       description: description(),
       deps: deps(),
@@ -39,7 +39,7 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :envio],
+      extra_applications: [:logger, :envio, :cloister],
       mod: {Tarearbol.Application, []}
     ]
   end
