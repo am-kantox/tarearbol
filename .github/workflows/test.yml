@@ -16,10 +16,11 @@ jobs:
         with:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
-      - run: epmd -daemon
-      - run: MIX_ENV=test mix deps.get
-      - run: MIX_ENV=test mix deps.compile
-      - run: MIX_ENV=test mix test
-      - run: MIX_ENV=ci mix deps.get
-      - run: MIX_ENV=ci mix deps.compile
-      - run: MIX_ENV=ci mix test.cluster
+      - name: Install → Compile dependencies
+        run: |
+          epmd -daemon
+          MIX_ENV=test mix deps.get
+          MIX_ENV=test mix deps.compile
+      - name: Run tests
+        run: |
+          MIX_ENV=test mix test

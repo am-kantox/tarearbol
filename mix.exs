@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.99.5"
+  @version "0.99.6"
 
   def project do
     [
@@ -39,7 +39,7 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :envio, :cloister],
+      extra_applications: extra_applications(Mix.env()),
       mod: {Tarearbol.Application, []}
     ]
   end
@@ -52,7 +52,7 @@ defmodule Tarearbol.Mixfile do
       {:cloister, "~> 0.1"},
       # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
-      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
+      {:dialyxir, "~> 1.0.0", only: [:dev, :test, :ci], runtime: false},
       {:benchfella, "~> 0.3", only: [:dev]},
       {:ex_doc, "~> 0.11", only: :dev},
       {:test_cluster_task, "~> 0.1", only: [:test, :ci]},
@@ -131,6 +131,11 @@ defmodule Tarearbol.Mixfile do
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:ci), do: ["lib", "test/support"]
   defp elixirc_paths(:dev), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp extra_applications(:test), do: [:logger, :envio, :stream_data]
+  defp extra_applications(:ci), do: [:logger, :envio, :cloister, :stream_data]
+  defp extra_applications(_), do: [:logger, :envio, :cloister]
 end
