@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         otp: [21.3, 22.2]
-        elixir: [1.9.4, 1.10.0]
+        elixir: [1.9.4, 1.10.2]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-elixir@v1
@@ -19,4 +19,5 @@ jobs:
           otp-version: ${{matrix.otp}}
           elixir-version: ${{matrix.elixir}}
       - run: MIX_ENV=ci mix deps.get
+      - run: MIX_ENV=ci mix deps.compile
       - run: MIX_ENV=ci mix quality.ci
