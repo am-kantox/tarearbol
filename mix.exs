@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "0.99.3"
+  @version "0.99.4"
 
   def project do
     [
@@ -49,7 +49,7 @@ defmodule Tarearbol.Mixfile do
     [
       {:envio, "~> 0.5"},
       {:formulae, "~> 0.5"},
-      {:cloister, "~> 0.1"},
+      {:cloister, "~> 0.1", optional: true},
       # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
       {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test, :ci], runtime: false},
@@ -130,6 +130,5 @@ defmodule Tarearbol.Mixfile do
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(:dev), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 end

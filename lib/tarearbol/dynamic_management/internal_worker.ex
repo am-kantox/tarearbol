@@ -12,16 +12,40 @@ defmodule Tarearbol.InternalWorker do
   @spec put(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :ok
   def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
 
-  @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :abcast
-  def multiput(module_name, id, opts),
-    do: Cloister.multicast(module_name, {:put, id, opts})
-
   @spec del(module_name :: module(), id :: binary()) :: :ok
   def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
 
-  @spec multidel(module_name :: module(), id :: binary()) :: :abcast
-  def multidel(module_name, id),
-    do: Cloister.multicast(module_name, {:del, id})
+  case Code.ensure_compiled(Cloister) do
+    {:module, Cloister} ->
+      @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :abcast
+      def multiput(module_name, id, opts),
+        do: Cloister.multicast(module_name, {:put, id, opts})
+
+      @spec multidel(module_name :: module(), id :: binary()) :: :abcast
+      def multidel(module_name, id),
+        do: Cloister.multicast(module_name, {:del, id})
+
+    {:error, _} ->
+      require Logger
+
+      @spec multiput(module_name :: module(), id :: binary(), opts :: Enum.t()) :: :ok
+      def multiput(module_name, id, opts) do
+        Logger.warn(
+          "multidel/3 function is unavailable: Cloister cannot be found.\nUsing local `del/3` instead"
+        )
+
+        put(module_name, id, opts)
+      end
+
+      @spec multidel(module_name :: module(), id :: binary()) :: :ok
+      def multidel(module_name, id) do
+        Logger.warn(
+          "multiput/3 function is unavailable: Cloister cannot be found.\nUsing local `put/3` instead"
+        )
+
+        del(module_name, id)
+      end
+  end
 
   @spec get(module_name :: module(), id :: binary()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})
