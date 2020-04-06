@@ -136,6 +136,6 @@ defmodule Tarearbol.Mixfile do
 
   defp extra_applications(:test), do: [:logger, :envio, :stream_data]
   defp extra_applications(:ci), do: [:logger, :envio, :cloister, :stream_data]
-  defp extra_applications(:dev), do: [:logger, :envio, :cloister]
+  defp extra_applications(:dev), do: [:logger, :envio]
   defp extra_applications(:prod), do: [:logger, :envio]
 end
