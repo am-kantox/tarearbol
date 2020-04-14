@@ -47,14 +47,14 @@ defmodule Tarearbol.DynamicWorker do
         Tarearbol.InternalWorker.multidel(manager.internal_worker_module(), id)
         {:noreply, state}
 
-      {:replace, id, payload} ->
-        Tarearbol.InternalWorker.put(manager.internal_worker_module(), id, payload)
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-        {:noreply, state}
+      {:replace, ^id, payload} ->
+        do_handle_work(manager.state_module(), id, payload, timeout)
+        {:noreply, %{state | payload: payload}}
 
-      {:multireplace, id, payload} ->
-        Tarearbol.InternalWorker.multiput(manager.internal_worker_module(), id, payload)
-        Tarearbol.InternalWorker.multidel(manager.internal_worker_module(), id)
+      {:replace, new_id, payload} ->
+        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
+        Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
+        schedule_work(timeout)
         {:noreply, state}
 
       {{:timeout, timeout}, result} ->
