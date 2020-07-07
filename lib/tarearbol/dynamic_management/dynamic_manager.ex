@@ -31,9 +31,9 @@ defmodule Tarearbol.DynamicManager do
   `DynamicManager` also allows dynamic workers management. It exports three
   functions
 
-      @spec put(id :: binary(), opts :: Enum.t()) :: pid()
-      @spec del(id :: binary()) :: :ok
-      @spec get(id :: binary()) :: Enum.t()
+      @spec put(id :: id(), opts :: Enum.t()) :: pid()
+      @spec del(id :: id()) :: :ok
+      @spec get(id :: id()) :: Enum.t()
 
   The semantics of `put/2` arguments is the same as a single `child_spec`,
   `del/1` and `get/1` receive the unique ID of the child and shutdown it or
@@ -41,6 +41,9 @@ defmodule Tarearbol.DynamicManager do
 
   """
   @moduledoc since: "0.9.0"
+
+  @typedoc "Identifier of the child process"
+  @type id :: any()
 
   @doc """
   This function is called to retrieve the map of children with name as key
@@ -77,7 +80,7 @@ defmodule Tarearbol.DynamicManager do
   - or **_deprecated_** anything else will be treated as a result
   """
   @doc since: "0.9.0"
-  @callback perform(id :: binary(), payload :: term()) :: any()
+  @callback perform(id :: id(), payload :: term()) :: any()
 
   @doc """
   Declares an instance-wide callback to report state; if the startup process
@@ -131,6 +134,8 @@ defmodule Tarearbol.DynamicManager do
           @moduledoc false
           use GenServer
 
+          alias Tarearbol.DynamicManager
+
           defstruct state: :down, children: %{}, manager: nil
 
           @type t :: %{
@@ -150,13 +155,13 @@ defmodule Tarearbol.DynamicManager do
           @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
           def update_state(state), do: GenServer.cast(__MODULE__, {:update_state, state})
 
-          @spec put(id :: binary(), props :: map()) :: :ok
+          @spec put(id :: DynamicManager.id(), props :: map()) :: :ok
           def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
 
-          @spec del(id :: binary()) :: :ok
+          @spec del(id :: DynamicManager.id()) :: :ok
           def del(id), do: GenServer.cast(__MODULE__, {:del, id})
 
-          @spec get(id :: binary()) :: :ok
+          @spec get(id :: DynamicManager.id()) :: :ok
           def get(id, default \\ nil),
             do: GenServer.call(__MODULE__, {:get, id, default})
 
