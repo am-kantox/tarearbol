@@ -30,7 +30,7 @@ defmodule Tarearbol.Job do
 
   @spec on_callback(any(), any(), binary(), keyword()) :: any()
   defp on_callback(value, data, log_prefix \\ "JOB", level: level) do
-    Tarearbol.Publisher.publish(level, value, data)
+    Tarearbol.Publisher.publish(:tarearbol, :info, %{data: data, level: level, value: value})
 
     case value do
       level when is_atom(level) ->

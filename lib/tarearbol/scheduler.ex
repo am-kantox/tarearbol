@@ -146,7 +146,7 @@ defmodule Tarearbol.Scheduler do
 
     case job.runner.() do
       :halt ->
-        Tarearbol.Publisher.publish(:slack, :warn, Map.put(data, :status, :halted))
+        Tarearbol.Publisher.publish(:tarearbol, :debug, Map.put(data, :status, :halted))
         :halt
 
       {:ok, result} ->
@@ -155,7 +155,7 @@ defmodule Tarearbol.Scheduler do
           |> Map.put(:status, :ran)
           |> Map.put(:result, result)
 
-        Tarearbol.Publisher.publish(:slack, :info, data)
+        Tarearbol.Publisher.publish(:tarearbol, :debug, data)
 
         {{:timeout, timeout(job.schedule)}, result}
 
@@ -165,7 +165,7 @@ defmodule Tarearbol.Scheduler do
           |> Map.put(:status, :rescheduled)
           |> Map.put(:result, result)
 
-        Tarearbol.Publisher.publish(:slack, :info, data)
+        Tarearbol.Publisher.publish(:tarearbol, :debug, data)
         {:replace, id, %{payload | job: %Job{job | schedule: schedule}}}
     end
   end

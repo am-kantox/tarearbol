@@ -47,8 +47,8 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:envio, "~> 0.5"},
       {:formulae, "~> 0.5"},
+      {:envio, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
