@@ -135,11 +135,12 @@ Tarearbol.drain
 
 ### Changelog
 
-- `0.6.0` code format, explicit `Task.shutdown`;
-- `0.5.0` using `DETS` to store `run_at` jobs;
-- `0.4.2` `Tarearbol.spawn_ensured/2`;
-- `0.4.1` `run_at` now repeats itself properly;
-- `0.4.0` allow `run_at` recurrent tasks.
+- **`1.0.0`** deprecated local functions in `run_in`/`run_at` in favor of `Tarearbol.Scheduler`;
+- **`0.6.0`** code format, explicit `Task.shutdown`;
+- **`0.5.0`** using `DETS` to store `run_at` jobs;
+- **`0.4.2`** `Tarearbol.spawn_ensured/2`;
+- **`0.4.1`** `run_at` now repeats itself properly;
+- **`0.4.0`** allow `run_at` recurrent tasks.
 
 ### Increasing delay as in [`sidekiq`](https://github.com/mperham/sidekiq)
 
