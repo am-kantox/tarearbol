@@ -85,7 +85,7 @@ defmodule Tarearbol.Test do
     Process.sleep(50)
     assert Enum.count(Tarearbol.Application.children()) == count + 1
     Process.sleep(100)
-    assert Enum.count(Tarearbol.Application.children()) == count + 2
+    assert Enum.count(Tarearbol.Application.children()) == count + 1
     Process.sleep(100)
     assert_received :yo
     assert Enum.count(Tarearbol.Application.children()) == count
@@ -116,17 +116,13 @@ defmodule Tarearbol.Test do
   test "#run_at" do
     count = Enum.count(Tarearbol.Application.children())
 
-    run_at =
-      DateTime.utc_now()
-      |> DateTime.to_unix(:millisecond)
-      |> Kernel.+(100)
-      |> DateTime.from_unix!(:millisecond)
+    run_at = DateTime.add(DateTime.utc_now(), 100, :millisecond)
 
     Tarearbol.Errand.run_at(fn -> Process.sleep(100) end, run_at)
     Process.sleep(50)
     assert Enum.count(Tarearbol.Application.children()) == count + 1
     Process.sleep(100)
-    assert Enum.count(Tarearbol.Application.children()) == count + 2
+    assert Enum.count(Tarearbol.Application.children()) == count + 1
     Process.sleep(100)
     assert Enum.count(Tarearbol.Application.children()) == count
   end

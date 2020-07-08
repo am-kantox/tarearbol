@@ -41,8 +41,13 @@ defmodule Tarearbol.Crontab do
 
   def next(nil, input, opts), do: next(DateTime.utc_now(), input, opts)
 
-  def next(%DateTime{} = dt, input, opts),
-    do: dt |> next_as_stream(input, opts) |> Enum.take(1) |> hd()
+  def next(%DateTime{} = dt, input, opts) do
+    dt
+    |> next_as_stream(input, opts)
+    |> Enum.drop_while(&(DateTime.compare(&1[:origin], &1[:next]) == :gt))
+    |> Enum.take(1)
+    |> hd()
+  end
 
   @doc """
   Returns the _list_ of all the events after `dt` (default: `DateTime.utc_now/0`.)
@@ -188,27 +193,11 @@ defmodule Tarearbol.Crontab do
                                     calendar: dt.calendar
                                   }
 
-                                  {next_dt, with_precision} =
-                                    case DateTime.diff(next_dt, dt, precision) do
-                                      wp when wp <= 0 ->
-                                        next_dt =
-                                          DateTime.add(
-                                            next_dt,
-                                            60,
-                                            :second
-                                          )
-
-                                        {next_dt, DateTime.diff(next_dt, dt, precision)}
-
-                                      wp ->
-                                        {next_dt, wp}
-                                    end
-
                                   {[
                                      [
                                        {:origin, DateTime.truncate(dt, precision)},
                                        {:next, DateTime.truncate(next_dt, precision)},
-                                       {precision, with_precision}
+                                       {precision, DateTime.diff(next_dt, dt, precision)}
                                      ]
                                    ], :ok}
                                 end

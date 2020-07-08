@@ -48,7 +48,8 @@ defmodule Tarearbol.Scheduler do
       Tarearbol.DynamicManager,
       Tarearbol.InternalWorker,
       Tarearbol.Telemetria
-    ]
+    ],
+    exports: [State]
 
   use Tarearbol.DynamicManager
 
@@ -88,8 +89,8 @@ defmodule Tarearbol.Scheduler do
     def create(name, runner, schedule) do
       {once?, schedule} =
         case schedule do
-          secs when is_integer(secs) ->
-            {true, Macro.escape(DateTime.add(DateTime.utc_now(), schedule))}
+          msecs when is_integer(msecs) ->
+            {true, Macro.escape(DateTime.add(DateTime.utc_now(), schedule, :millisecond))}
 
           %Time{} ->
             {false, Tarearbol.Crontab.to_cron(schedule)}
@@ -104,10 +105,10 @@ defmodule Tarearbol.Scheduler do
       run_ast =
         case runner do
           {m, f} ->
-            quote do
+            quote bind_quoted: [once?: once?, m: m, f: f] do
               def run do
-                result = apply(unquote(m), unquote(f), [])
-                if unquote(once?), do: :halt, else: {:ok, result}
+                result = apply(m, f, [])
+                if once?, do: :halt, else: {:ok, result}
               end
             end
 
@@ -227,22 +228,28 @@ defmodule Tarearbol.Scheduler do
   defp job!(name, runner, schedule) do
     job = Job.create(name, runner, schedule)
 
-    {name, %{payload: %{job: job}, timeout: timeout(job.schedule)}}
+    {inspect(name), %{payload: %{job: job}, timeout: timeout(job.schedule)}}
   end
 
   @spec timeout(schedule :: schedule()) :: non_neg_integer()
+  defp timeout(schedule) when is_integer(schedule) and schedule > 0, do: schedule
+
   defp timeout(schedule) when is_binary(schedule),
     do:
       Tarearbol.Crontab.next(DateTime.utc_now(), schedule, precision: :millisecond)[:millisecond]
 
   defp timeout(%DateTime{} = schedule),
-    do: DateTime.diff(schedule, DateTime.utc_now(), :millisecond)
+    do: Enum.max([0, DateTime.diff(schedule, DateTime.utc_now(), :millisecond)])
 
-  # @spec wrap_runner(runner :: runner(), schedule :: schedule()) :: runner()
-  # defp wrap_runner(runner, schedule) when is_binary(schedule), do: runner
-  # defp wrap_runner(runner, %DateTime{} = schedule), do:
-  #   runner
-  # end
+  defp timeout(%Time{} = schedule) do
+    schedule
+    |> Time.diff(Time.utc_now(), :millisecond)
+    |> case do
+      secs when secs >= 0 -> secs
+      secs -> 24 * 60 * 60 + secs
+    end
+    |> timeout()
+  end
 
   @spec config :: keyword()
   defp config,
