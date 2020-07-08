@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 0.9"}
+    {:tarearbol, "~> 1.0"}
   ]
 end
 ```
@@ -133,6 +133,8 @@ Tarearbol.drain
 [ok: 42, ok: :foo] # immediately, the returned value(s)
 ```
 
+### [Dynamic Workers Management](https://hexdocs.pm/tarearbol/dynamic_workers_management.html)
+
 ### Changelog
 
 - **`1.0.0`** deprecated local functions in `run_in`/`run_at` in favor of `Tarearbol.Scheduler`;
@@ -142,8 +144,4 @@ Tarearbol.drain
 - **`0.4.1`** `run_at` now repeats itself properly;
 - **`0.4.0`** allow `run_at` recurrent tasks.
 
-### Increasing delay as in [`sidekiq`](https://github.com/mperham/sidekiq)
-
-**pending**
-
-Documentation can be found at [https://hexdocs.pm/tarearbol](https://hexdocs.pm/tarearbol).
+### [Documentation](https://hexdocs.pm/tarearbol)
