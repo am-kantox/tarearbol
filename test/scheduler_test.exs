@@ -4,11 +4,6 @@ defmodule Tarearbol.Scheduler.Test do
   use ExUnit.Case
   doctest Tarearbol.Scheduler
 
-  setup do
-    # with {:ok, pid} <- DynamicManager.start_link(), do: [pid: pid]
-    :ok
-  end
-
   test "receives pong from a job" do
     defmodule PingPong do
       @pid :erlang.term_to_binary(self())

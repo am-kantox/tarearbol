@@ -11,6 +11,16 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
+  @with_telemetria :telemetria
+                   |> Application.get_env(:applications, [])
+                   |> Keyword.keys()
+                   |> Enum.member?(:tarearbol) and
+                     match?({:module, Telemetria}, Code.ensure_compiled(Telemetria))
+
+  @doc false
+  @spec telemetria? :: boolean()
+  def telemetria?, do: @with_telemetria
+
   @doc """
   Ensures the task to be completed; restarts it when necessary.
 

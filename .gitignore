@@ -30,3 +30,6 @@ erl_crash.dump
 /bench/snapshots/*
 
 /.vscode/
+
+# Telemetria events
+config/.telemetria.config.json

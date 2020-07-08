@@ -6,6 +6,8 @@ defmodule Tarearbol.Job do
   require Logger
   alias Tarearbol.Utils
 
+  if Tarearbol.telemetria?(), do: use(Telemetria, action: :import)
+
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
 
@@ -28,10 +30,9 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
+  if Tarearbol.telemetria?(), do: @telemetria(level: :info)
   @spec on_callback(any(), any(), binary(), keyword()) :: any()
-  defp on_callback(value, data, log_prefix \\ "JOB", level: level) do
-    Tarearbol.Publisher.publish(:tarearbol, :info, %{data: data, level: level, value: value})
-
+  defp on_callback(value, data, log_prefix, level: level) do
     case value do
       level when is_atom(level) ->
         do_log(level, "[#{log_prefix}] #{inspect(data)}")
@@ -69,7 +70,7 @@ defmodule Tarearbol.Job do
 
   @spec on_success(any(), any(), keyword()) :: any()
   defp on_success(value, data, level: level),
-    do: on_callback(value, data, level: level)
+    do: on_callback(value, data, inspect(__MODULE__), level: level)
 
   @spec on_problem(any(), any(), binary(), keyword()) :: any()
   defp on_problem(value, data, log_prefix, level: level),
