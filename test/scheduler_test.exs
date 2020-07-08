@@ -4,14 +4,6 @@ defmodule Tarearbol.Scheduler.Test do
   use ExUnit.Case
   doctest Tarearbol.Scheduler
 
-  setup_all do
-    case Tarearbol.Scheduler.start_link() do
-      {:ok, _pid} -> :ok
-      {:error, {:already_started, _pid}} -> :ok
-      _ -> assert false
-    end
-  end
-
   test "Job.create/3 + Scheduler.put/3" do
     defmodule PingPong0 do
       @moduledoc false
