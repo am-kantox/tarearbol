@@ -19,22 +19,18 @@ defmodule Tarearbol.Runner do
   end
 end
 
-defmodule Tarearbol.Subscriber do
-  use Envio.Subscriber, channels: [{Tarearbol.Publisher, :all}]
-
-  def handle_envio(message, state) do
-    {:noreply, state} = super(message, state)
-    IO.inspect({message, state}, label: "Received")
-    {:noreply, state}
-  end
-end
-
 defmodule DynamicManager do
   use Tarearbol.DynamicManager
 
   def children_specs do
     for i <- 1..100, do: {"foo_#{i}", []}, into: %{}
   end
+end
+
+case Tarearbol.Scheduler.start_link() do
+  {:ok, _pid} -> :ok
+  {:error, {:already_started, _pid}} -> :ok
+  _ -> raise "Tarearbol.Scheduler.start_link/0"
 end
 
 ExUnit.start(exclude: :skip, capture_log: true)

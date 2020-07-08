@@ -3,6 +3,8 @@ defmodule Tarearbol.Calendar do
   Handy functions to work with dates.
   """
 
+  use Boundary
+
   @days_in_week 7
 
   @doc """

@@ -60,6 +60,14 @@ defmodule Tarearbol.DynamicManager.Test do
     GenServer.stop(pid3)
     GenServer.stop(pid2)
     GenServer.stop(pid1)
+
+    Enum.each([PingPong1, PingPong2, PingPong3], fn mod ->
+      :code.delete(mod)
+      :code.purge(mod)
+      mod = Module.concat([mod, State])
+      :code.delete(mod)
+      :code.purge(mod)
+    end)
   end
 
   test "tracks crashes" do
@@ -83,5 +91,13 @@ defmodule Tarearbol.DynamicManager.Test do
     Process.sleep(10)
     assert map_size(PingPong3.state_module().state().children) == 0
     GenServer.stop(pid3)
+
+    Enum.each([PingPong3], fn mod ->
+      :code.delete(mod)
+      :code.purge(mod)
+      mod = Module.concat([mod, State])
+      :code.delete(mod)
+      :code.purge(mod)
+    end)
   end
 end

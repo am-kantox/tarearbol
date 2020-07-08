@@ -1,5 +1,7 @@
 defmodule Tarearbol.DynamicWorker do
   @moduledoc false
+  use Boundary, deps: [Tarearbol.InternalWorker]
+
   use GenServer
 
   @default_opts %{

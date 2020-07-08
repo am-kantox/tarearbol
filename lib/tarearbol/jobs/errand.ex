@@ -1,6 +1,8 @@
 defmodule Tarearbol.Errand do
   @moduledoc false
 
+  use Boundary, deps: [Tarearbol.Application, Tarearbol.Job, Tarearbol.Utils]
+
   require Logger
 
   @default_opts [

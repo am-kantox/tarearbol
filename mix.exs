@@ -13,6 +13,7 @@ defmodule Tarearbol.Mixfile do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      compilers: compilers(Mix.env()),
       preferred_cli_env: ["test.cluster": :ci],
       package: package(),
       description: description(),
@@ -24,7 +25,7 @@ defmodule Tarearbol.Mixfile do
         {@app,
          [
            include_executables_for: [:unix],
-           applications: [logger: :permanent, envio: :permanent]
+           applications: [logger: :permanent]
          ]}
       ],
       dialyzer: [
@@ -48,7 +49,8 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:formulae, "~> 0.5"},
-      {:envio, "~> 0.5", optional: true},
+      {:boundary, "~> 0.4", runtime: false},
+      {:telemetria, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
       {:credo, "~> 1.0", only: [:dev, :ci]},
@@ -134,8 +136,11 @@ defmodule Tarearbol.Mixfile do
   defp elixirc_paths(:ci), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  defp extra_applications(:test), do: [:logger, :envio, :stream_data]
-  defp extra_applications(:ci), do: [:logger, :envio, :cloister, :stream_data]
-  defp extra_applications(:dev), do: [:logger, :envio]
-  defp extra_applications(:prod), do: [:logger, :envio]
+  defp extra_applications(:test), do: [:logger, :stream_data, :telemetria]
+  defp extra_applications(:ci), do: [:logger, :cloister, :stream_data]
+  defp extra_applications(:dev), do: [:logger]
+  defp extra_applications(:prod), do: [:logger]
+
+  defp compilers(:test), do: [:boundary, :telemetria | Mix.compilers()]
+  defp compilers(_), do: [:boundary | Mix.compilers()]
 end

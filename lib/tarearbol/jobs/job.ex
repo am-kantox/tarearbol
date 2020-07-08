@@ -1,6 +1,16 @@
 defmodule Tarearbol.Job do
   @moduledoc false
 
+  use Boundary,
+    deps: [
+      Tarearbol.Application,
+      Tarearbol.TaskFailedError,
+      Tarearbol.Telemetria,
+      Tarearbol.Utils
+    ]
+
+  if Tarearbol.Telemetria.use?(), do: use(Telemetria)
+
   @type job :: (() -> any()) | {atom(), atom(), [any()]}
 
   require Logger
@@ -28,10 +38,9 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
+  if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
   @spec on_callback(any(), any(), binary(), keyword()) :: any()
-  defp on_callback(value, data, log_prefix \\ "JOB", level: level) do
-    Tarearbol.Publisher.publish(:tarearbol, :info, %{data: data, level: level, value: value})
-
+  defp on_callback(value, data, log_prefix, level: level) do
     case value do
       level when is_atom(level) ->
         do_log(level, "[#{log_prefix}] #{inspect(data)}")
@@ -69,7 +78,7 @@ defmodule Tarearbol.Job do
 
   @spec on_success(any(), any(), keyword()) :: any()
   defp on_success(value, data, level: level),
-    do: on_callback(value, data, level: level)
+    do: on_callback(value, data, inspect(__MODULE__), level: level)
 
   @spec on_problem(any(), any(), binary(), keyword()) :: any()
   defp on_problem(value, data, log_prefix, level: level),

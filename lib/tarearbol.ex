@@ -11,6 +11,16 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
+  use Boundary,
+    deps: [
+      Tarearbol.Application,
+      Tarearbol.Errand,
+      Tarearbol.DynamicManager,
+      Tarearbol.Job,
+      Tarearbol.Jobs,
+      Tarearbol.InternalWorker
+    ]
+
   @doc """
   Ensures the task to be completed; restarts it when necessary.
 

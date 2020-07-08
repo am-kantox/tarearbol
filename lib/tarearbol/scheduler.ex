@@ -41,6 +41,15 @@ defmodule Tarearbol.Scheduler do
   Tarearbol.Scheduler.push(TestJob, &Foo.bar/0, "3-5/1 9-18 * * 6-7")
   ```
   """
+
+  use Boundary,
+    deps: [
+      Tarearbol.Crontab,
+      Tarearbol.DynamicManager,
+      Tarearbol.InternalWorker,
+      Tarearbol.Telemetria
+    ]
+
   use Tarearbol.DynamicManager
 
   @typedoc """
@@ -135,37 +144,32 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
+  if Tarearbol.Telemetria.use?(), do: use(Telemetria)
+
   @impl Tarearbol.DynamicManager
+  @doc false
   def children_specs,
     do: for({name, runner, schedule} <- jobs(), into: %{}, do: job!(name, runner, schedule))
 
   @impl Tarearbol.DynamicManager
   @doc false
-  def perform(id, %{job: %Job{} = job} = payload) do
-    data = Map.from_struct(job)
+  def perform(id, %{job: %Job{}} = payload),
+    do: do_perform(id, payload)
+
+  @spec do_perform(id :: Tarearbol.DynamicManager.id(), payload :: map()) :: any()
+  if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
+
+  defp do_perform(id, payload) do
+    job = payload.job
 
     case job.runner.() do
       :halt ->
-        Tarearbol.Publisher.publish(:tarearbol, :debug, Map.put(data, :status, :halted))
         :halt
 
       {:ok, result} ->
-        data =
-          data
-          |> Map.put(:status, :ran)
-          |> Map.put(:result, result)
-
-        Tarearbol.Publisher.publish(:tarearbol, :debug, data)
-
         {{:timeout, timeout(job.schedule)}, result}
 
-      {{:reschedule, schedule}, result} ->
-        data =
-          data
-          |> Map.put(:status, :rescheduled)
-          |> Map.put(:result, result)
-
-        Tarearbol.Publisher.publish(:tarearbol, :debug, data)
+      {{:reschedule, schedule}, _result} ->
         {:replace, id, %{payload | job: %Job{job | schedule: schedule}}}
     end
   end

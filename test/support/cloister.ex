@@ -2,6 +2,8 @@ if match?({:module, Cloister}, Code.ensure_compiled(Cloister)) do
   defmodule Cloister.Monitor.Info do
     @moduledoc false
 
+    use Boundary
+
     @spec whois(term :: term()) :: node()
     def whois(term) do
       case HashRing.Managed.key_to_node(:cloister, term) do
@@ -21,6 +23,8 @@ if match?({:module, Cloister}, Code.ensure_compiled(Cloister)) do
 
   defmodule Cloister.Listener.Default do
     @moduledoc false
+
+    use Boundary
 
     @behaviour Cloister.Listener
     require Logger

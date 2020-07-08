@@ -1,5 +1,8 @@
 defmodule Tarearbol.DynamicSupervisor do
   @moduledoc false
+
+  use Boundary
+
   use DynamicSupervisor
 
   @spec start_link(opts :: keyword()) :: Supervisor.on_start()
