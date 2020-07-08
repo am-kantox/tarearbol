@@ -11,6 +11,8 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
+  use Boundary, deps: [Tarearbol.Application, Tarearbol.Errand, Tarearbol.Job, Tarearbol.Jobs]
+
   @with_telemetria :telemetria
                    |> Application.get_env(:applications, [])
                    |> Keyword.keys()

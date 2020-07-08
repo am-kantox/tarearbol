@@ -1,6 +1,12 @@
 defmodule Tarearbol.Jobs do
   @moduledoc false
 
+  use Boundary,
+    deps: [
+      Tarearbol.Job,
+      Tarearbol.Utils
+    ]
+
   alias Tarearbol.Utils
 
   @spec ensure_all_streamed([Tarearbol.Job.job()], keyword()) ::

@@ -1,5 +1,8 @@
 defmodule Tarearbol.InternalWorker do
   @moduledoc false
+
+  use Boundary
+
   use GenServer
 
   alias Tarearbol.DynamicManager

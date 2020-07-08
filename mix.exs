@@ -49,6 +49,7 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:formulae, "~> 0.5"},
+      {:boundary, "~> 0.4", runtime: false},
       {:telemetria, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
@@ -140,6 +141,6 @@ defmodule Tarearbol.Mixfile do
   defp extra_applications(:dev), do: [:logger]
   defp extra_applications(:prod), do: [:logger]
 
-  defp compilers(:test), do: [:telemetria | Mix.compilers()]
-  defp compilers(_), do: Mix.compilers()
+  defp compilers(:test), do: [:boundary, :telemetria | Mix.compilers()]
+  defp compilers(_), do: [:boundary | Mix.compilers()]
 end

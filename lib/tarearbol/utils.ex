@@ -4,6 +4,8 @@ defmodule Tarearbol.Utils do
   # Set of utilities used in `Tarearbol`. It currently includes human-to-machine
   #   interval conversions and options extractor.
 
+  use Boundary
+
   @type interval ::
           integer()
           | float()

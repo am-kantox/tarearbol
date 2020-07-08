@@ -41,6 +41,15 @@ defmodule Tarearbol.Scheduler do
   Tarearbol.Scheduler.push(TestJob, &Foo.bar/0, "3-5/1 9-18 * * 6-7")
   ```
   """
+
+  use Boundary,
+    deps: [
+      Tarearbol.Crontab,
+      Tarearbol.DynamicManager,
+      Tarearbol.InternalWorker,
+      Tarearbol.Telemetria
+    ]
+
   use Tarearbol.DynamicManager
 
   @typedoc """
@@ -135,9 +144,7 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
-  if Tarearbol.telemetria?(),
-    do: use(Telemetria, action: :require),
-    else: def(t(any), do: any)
+  if Tarearbol.Telemetria.use?(), do: use(Telemetria)
 
   @impl Tarearbol.DynamicManager
   @doc false
@@ -150,7 +157,7 @@ defmodule Tarearbol.Scheduler do
     do: do_perform(id, payload)
 
   @spec do_perform(id :: Tarearbol.DynamicManager.id(), payload :: map()) :: any()
-  if Tarearbol.telemetria?(), do: @telemetria(level: :info)
+  if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
 
   defp do_perform(id, payload) do
     job = payload.job

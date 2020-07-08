@@ -42,6 +42,8 @@ defmodule Tarearbol.DynamicManager do
   """
   @moduledoc since: "0.9.0"
 
+  use Boundary
+
   @typedoc "Identifier of the child process"
   @type id :: any()
 

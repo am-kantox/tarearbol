@@ -3,6 +3,9 @@ defmodule Tarearbol.TaskFailedError do
   The generic exception thrown from any function
   dealing with `Task` handling.
   """
+
+  use Boundary
+
   defexception [:outcome, :message, :job]
 
   @impl true

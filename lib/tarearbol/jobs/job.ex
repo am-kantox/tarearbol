@@ -1,12 +1,20 @@
 defmodule Tarearbol.Job do
   @moduledoc false
 
+  use Boundary,
+    deps: [
+      Tarearbol.Application,
+      Tarearbol.TaskFailedError,
+      Tarearbol.Telemetria,
+      Tarearbol.Utils
+    ]
+
+  if Tarearbol.Telemetria.use?(), do: use(Telemetria)
+
   @type job :: (() -> any()) | {atom(), atom(), [any()]}
 
   require Logger
   alias Tarearbol.Utils
-
-  if Tarearbol.telemetria?(), do: use(Telemetria, action: :import)
 
   @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
   @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
@@ -30,7 +38,7 @@ defmodule Tarearbol.Job do
 
   ##############################################################################
 
-  if Tarearbol.telemetria?(), do: @telemetria(level: :info)
+  if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
   @spec on_callback(any(), any(), binary(), keyword()) :: any()
   defp on_callback(value, data, log_prefix, level: level) do
     case value do

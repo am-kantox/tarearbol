@@ -3,6 +3,8 @@ defmodule Tarearbol.Crontab do
   Helper functions to work with `cron` syntax.
   """
 
+  use Boundary
+
   @typedoc "Internal representation of the record in cron file"
   @type t :: %__MODULE__{}
   defstruct [:minute, :hour, :day, :month, :day_of_week]

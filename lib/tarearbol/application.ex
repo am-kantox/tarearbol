@@ -1,6 +1,8 @@
 defmodule Tarearbol.Application do
   @moduledoc false
 
+  use Boundary
+
   use Application
 
   @spec start(Application.app(), Application.restart_type()) ::
