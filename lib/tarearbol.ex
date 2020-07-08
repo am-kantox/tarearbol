@@ -11,17 +11,15 @@ defmodule Tarearbol do
       %RuntimeError{message: "¡?"}
   """
 
-  use Boundary, deps: [Tarearbol.Application, Tarearbol.Errand, Tarearbol.Job, Tarearbol.Jobs]
-
-  @with_telemetria :telemetria
-                   |> Application.get_env(:applications, [])
-                   |> Keyword.keys()
-                   |> Enum.member?(:tarearbol) and
-                     match?({:module, Telemetria}, Code.ensure_compiled(Telemetria))
-
-  @doc false
-  @spec telemetria? :: boolean()
-  def telemetria?, do: @with_telemetria
+  use Boundary,
+    deps: [
+      Tarearbol.Application,
+      Tarearbol.Errand,
+      Tarearbol.DynamicManager,
+      Tarearbol.Job,
+      Tarearbol.Jobs,
+      Tarearbol.InternalWorker
+    ]
 
   @doc """
   Ensures the task to be completed; restarts it when necessary.

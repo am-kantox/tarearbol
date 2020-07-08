@@ -137,7 +137,6 @@ defmodule Tarearbol.Crontab do
     %Tarearbol.Crontab{} = ct = prepare(input)
     dom_or_dow = dom_or_dow_checker(input, ct)
 
-    # {stream, :ok} =
     Stream.transform([dt.year, dt.year + 1], :ok, fn year, :ok ->
       {Stream.transform(1..dt.calendar.months_in_year(year), :ok, fn
          month, :ok when year <= dty and month < dtm ->
@@ -189,11 +188,27 @@ defmodule Tarearbol.Crontab do
                                     calendar: dt.calendar
                                   }
 
+                                  {next_dt, with_precision} =
+                                    case DateTime.diff(next_dt, dt, precision) do
+                                      wp when wp <= 0 ->
+                                        next_dt =
+                                          DateTime.add(
+                                            next_dt,
+                                            60,
+                                            :second
+                                          )
+
+                                        {next_dt, DateTime.diff(next_dt, dt, precision)}
+
+                                      wp ->
+                                        {next_dt, wp}
+                                    end
+
                                   {[
                                      [
                                        {:origin, DateTime.truncate(dt, precision)},
                                        {:next, DateTime.truncate(next_dt, precision)},
-                                       {precision, DateTime.diff(next_dt, dt, precision)}
+                                       {precision, with_precision}
                                      ]
                                    ], :ok}
                                 end
