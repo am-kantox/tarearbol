@@ -90,7 +90,7 @@ defmodule Tarearbol.DynamicWorker do
     schedule_work(timeout)
   end
 
-  @spec schedule_work(timeout :: non_neg_integer()) :: reference()
-  defp schedule_work(timeout),
-    do: Process.send_after(self(), :work, timeout)
+  @spec schedule_work(timeout :: integer()) :: reference()
+  defp schedule_work(timeout) when timeout < 100, do: schedule_work(100)
+  defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 end

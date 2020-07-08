@@ -5,53 +5,34 @@ defmodule Tarearbol.Scheduler.Test do
   doctest Tarearbol.Scheduler
 
   test "Job.create/3 + Scheduler.put/3" do
-    defmodule PingPong0 do
+    defmodule Pong1 do
       @moduledoc false
-
       @pid :erlang.term_to_binary(self())
-      def run() do
-        send(:erlang.binary_to_term(@pid), "pong")
-        :halt
-      end
+      def run, do: send(:erlang.binary_to_term(@pid), "pong-1")
     end
 
-    job = Tarearbol.Scheduler.Job.create(PutTestJob, &PingPong0.run/0, "* * * * *")
+    job = Tarearbol.Scheduler.Job.create(PongJob1, &Pong1.run/0, "* * * * *")
     Tarearbol.Scheduler.put("PutTestJob", %{payload: %{job: job}, timeout: 100})
-    assert_receive "pong", 500
+    assert_receive "pong-1", 200
   end
 
   test "push/3 → crontab" do
-    defmodule PingPong1 do
+    defmodule Pong2 do
       @moduledoc false
-
       @pid :erlang.term_to_binary(self())
-      def run() do
-        send(:erlang.binary_to_term(@pid), "pong")
-        :halt
-      end
+      def run, do: send(:erlang.binary_to_term(@pid), "pong-2")
     end
 
-    Tarearbol.Scheduler.push(PushTestJob1, &PingPong1.run/0, "* * * * *")
-    assert_receive "pong", 60_000
-  end
+    Tarearbol.Scheduler.push(PongJob2, &Pong2.run/0, 100)
+    assert_receive "pong-2", 200
 
-  test "push/3 → DateTime" do
-    defmodule PingPong2 do
+    defmodule Pong3 do
       @moduledoc false
-
       @pid :erlang.term_to_binary(self())
-      def run() do
-        send(:erlang.binary_to_term(@pid), "pong")
-        :halt
-      end
+      def run, do: send(:erlang.binary_to_term(@pid), "pong-3")
     end
 
-    Tarearbol.Scheduler.push(
-      PushTestJob2,
-      &PingPong2.run/0,
-      DateTime.add(DateTime.utc_now(), 100, :millisecond)
-    )
-
-    assert_receive "pong", 500
+    Tarearbol.Scheduler.push(PongJob3, &Pong3.run/0, "* * * * *")
+    assert_receive "pong-3", 60_000
   end
 end
