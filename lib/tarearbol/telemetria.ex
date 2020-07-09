@@ -17,6 +17,13 @@ defmodule Tarearbol.Telemetria do
   @spec use? :: boolean()
   def use?, do: @use
 
+  @spec maybe :: boolean()
+  if @use do
+    def maybe, do: use(Telemetria)
+  else
+    def maybe, do: false
+  end
+
   @spec options :: keyword()
   def options, do: @options
 

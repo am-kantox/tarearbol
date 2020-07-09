@@ -9,7 +9,7 @@ defmodule Tarearbol.Job do
       Tarearbol.Utils
     ]
 
-  if Tarearbol.Telemetria.use?(), do: use(Telemetria)
+  Tarearbol.Telemetria.maybe()
 
   @type job :: (() -> any()) | {atom(), atom(), [any()]}
 
