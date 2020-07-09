@@ -9,7 +9,7 @@ defmodule Tarearbol.Job do
       Tarearbol.Utils
     ]
 
-  Tarearbol.Telemetria.maybe()
+  use Tarearbol.Telemetria
 
   @type job :: (() -> any()) | {atom(), atom(), [any()]}
 

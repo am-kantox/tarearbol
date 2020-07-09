@@ -145,7 +145,7 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
-  Tarearbol.Telemetria.maybe()
+  use Tarearbol.Telemetria
 
   @impl Tarearbol.DynamicManager
   @doc false
