@@ -8,9 +8,11 @@ defmodule Tarearbol.Application do
   @spec start(Application.app(), Application.restart_type()) ::
           {:error, any()} | {:ok, pid()} | {:ok, pid(), any()}
   def start(_type, _args) do
+    optional =
+      if Application.get_env(:tarearbol, :scheduler, false), do: [Tarearbol.Scheduler], else: []
+
     children = [
-      {Task.Supervisor, [name: Tarearbol.Application]},
-      {Tarearbol.Scheduler, []}
+      {Task.Supervisor, [name: Tarearbol.Application]} | optional
     ]
 
     opts = [strategy: :one_for_one, name: Tarearbol.Supervisor]
