@@ -103,23 +103,35 @@ defmodule Tarearbol.Scheduler do
         end
 
       run_ast =
-        case runner do
-          {m, f} ->
-            quote bind_quoted: [once?: once?, m: m, f: f] do
+        case {once?, runner} do
+          {true, {m, f}} ->
+            quote do
               def run do
-                result = apply(m, f, [])
-                if once?, do: :halt, else: {:ok, result}
+                apply(unquote(m), unquote(f), [])
+                :halt
               end
             end
 
-          f when is_function(f, 0) ->
+          {false, {m, f}} ->
+            quote do
+              def run, do: {:ok, apply(unquote(m), unquote(f), [])}
+            end
+
+          {true, f} when is_function(f, 0) ->
             f = Macro.escape(f)
 
             quote do
               def run do
-                result = unquote(f).()
-                if unquote(once?), do: :halt, else: {:ok, result}
+                unquote(f).()
+                :halt
               end
+            end
+
+          {false, f} when is_function(f, 0) ->
+            f = Macro.escape(f)
+
+            quote do
+              def run, do: {:ok, unquote(f).()}
             end
         end
 
