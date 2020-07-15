@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "1.0.4"
+  @version "1.1.0"
 
   def project do
     [
@@ -50,7 +50,7 @@ defmodule Tarearbol.Mixfile do
   defp deps do
     [
       {:formulae, "~> 0.5"},
-      {:boundary, "~> 0.4", runtime: false},
+      {:boundary, "~> 0.4"},
       {:telemetria, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
@@ -143,5 +143,6 @@ defmodule Tarearbol.Mixfile do
   defp extra_applications(:prod), do: [:logger]
 
   defp compilers(:test), do: [:boundary, :telemetria | Mix.compilers()]
+  defp compilers(:prod), do: Mix.compilers()
   defp compilers(_), do: [:boundary | Mix.compilers()]
 end
