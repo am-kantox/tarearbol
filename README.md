@@ -1,6 +1,5 @@
-# Tarearbol
+# Tarearbol    [![Kantox ❤ OSS](https://img.shields.io/badge/❤-kantox_oss-informational.svg)](https://kantox.com/)  ![Test](https://github.com/am-kantox/tarearbol/workflows/Test/badge.svg)  ![Dialyzer](https://github.com/am-kantox/tarearbol/workflows/Dialyzer/badge.svg)
 
-[![CircleCI](https://circleci.com/gh/am-kantox/tarearbol.svg?style=svg)](https://circleci.com/gh/am-kantox/tarearbol)
 **Lightweight task manager, allowing retries, callbacks, assurance that the task succeeded, and more…**
 
 ## Installation
@@ -100,7 +99,7 @@ end, on_success: fn data -> IO.inspect(data, label: "★") end,
 
 - `attempts` integer, an amount of attempts before giving up, `0` for forever; default: `:infinity`
 - `delay` the delay between attempts, default: `:none`;
-- `raise`: when `true`, will raise after all attempts were unsuccessful, or return `{:error, outcome}` tuple otherwise, default: `false`;
+  - `raise`: when `true`, will raise after all attempts were unsuccessful, or return `{:error, outcome}` tuple otherwise, default: `false`;
 - `accept_not_ok`: when `true`, any result save for `{:error, _}` will be accepted as correct, otherwise only `{:ok, _}` is treated as correct, default: `true`;
 - `on_success`: callback when the task returned a result, default: `nil`;
 - `on_retry`: callback when the task failed and scheduled for retry, default: `:debug`;
