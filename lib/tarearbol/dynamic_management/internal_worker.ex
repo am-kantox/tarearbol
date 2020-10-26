@@ -60,7 +60,7 @@ defmodule Tarearbol.InternalWorker do
   def handle_continue(:init, [manager: manager] = state) do
     Enum.each(manager.children_specs(), &do_put(manager, &1))
 
-    manager.state_module.update_state(:started)
+    manager.state_module().update_state(:started)
     manager.handle_state_change(:started)
     {:noreply, state}
   end

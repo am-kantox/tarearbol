@@ -12,13 +12,13 @@ defmodule Tarearbol do
   """
 
   use Boundary,
-    deps: [
-      Tarearbol.Application,
-      Tarearbol.Errand,
-      Tarearbol.DynamicManager,
-      Tarearbol.Job,
-      Tarearbol.Jobs,
-      Tarearbol.InternalWorker
+    deps: [Application],
+    exports: [
+      Errand,
+      DynamicManager,
+      Job,
+      Jobs,
+      InternalWorker
     ]
 
   @doc """
