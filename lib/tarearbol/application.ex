@@ -1,7 +1,7 @@
 defmodule Tarearbol.Application do
   @moduledoc false
 
-  use Boundary, deps: [Tarearbol.Scheduler]
+  use Boundary, deps: [Tarearbol.Scheduler, Tarearbol.DynamicManager]
 
   use Application
 
