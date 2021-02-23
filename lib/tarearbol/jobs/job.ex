@@ -133,11 +133,11 @@ defmodule Tarearbol.Job do
         delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
 
-      {_, {:ok, {:error, _, data, _}}} when is_struct(data) ->
+      {_, {:ok, {:error, _, %_{} = data, _}}} ->
         delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
 
-      {_, {:ok, {:error, _, _, data}}} when is_struct(data) ->
+      {_, {:ok, {:error, _, _, %_{} = data}}} ->
         delay(opts)
         retry_or_die(:on_error, job, opts, data, retries_left)
 
