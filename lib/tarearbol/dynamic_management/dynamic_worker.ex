@@ -3,6 +3,7 @@ defmodule Tarearbol.DynamicWorker do
   use Boundary, deps: [Tarearbol.InternalWorker]
 
   use GenServer
+  require Logger
 
   @default_opts %{
     timeout: 1_000,
@@ -24,7 +25,7 @@ defmodule Tarearbol.DynamicWorker do
       Map.pop(
         opts,
         :name,
-        {:via, Registry, {Module.concat(opts.manager.namespace(), Registry), opts.id}}
+        {:via, Registry, {opts.manager.registry_module(), opts.id}}
       )
 
     GenServer.start_link(__MODULE__, opts, name: name)
@@ -32,8 +33,19 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def init(opts) do
+    Process.flag(:trap_exit, true)
     schedule_work(opts.timeout)
     {:ok, opts}
+  end
+
+  @impl GenServer
+  def terminate(reason, %{manager: manager, id: id, payload: payload}),
+    do: manager.terminate(reason, {id, payload})
+
+  @impl GenServer
+  def handle_info({:EXIT, _pid, reason}, state) do
+    Logger.warn("Unexpected EXIT reason " <> inspect(reason) <> "\nState:\n" <> inspect(state))
+    {:stop, reason, state}
   end
 
   @impl GenServer
@@ -57,7 +69,7 @@ defmodule Tarearbol.DynamicWorker do
         Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
         Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
         schedule_work(timeout)
-        {:noreply, state}
+        {:noreply, %{state | id: new_id, payload: payload}}
 
       {{:timeout, timeout}, result} ->
         do_handle_work(manager.state_module(), id, result, timeout)
@@ -79,6 +91,10 @@ defmodule Tarearbol.DynamicWorker do
     {:noreply, state}
   end
 
+  @impl GenServer
+  def handle_call(message, from, %{manager: manager, id: id, payload: payload} = state),
+    do: {:reply, manager.call(message, from, {id, payload}), state}
+
   @spec do_handle_work(
           state :: atom(),
           id :: any(),
@@ -91,6 +107,7 @@ defmodule Tarearbol.DynamicWorker do
   end
 
   @spec schedule_work(timeout :: integer()) :: reference()
+  defp schedule_work(timeout) when timeout <= 0, do: :ok
   defp schedule_work(timeout) when timeout < 100, do: schedule_work(100)
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 end

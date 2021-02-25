@@ -85,6 +85,19 @@ defmodule Tarearbol.DynamicManager do
   @callback perform(id :: id(), payload :: term()) :: any()
 
   @doc """
+  The method to implement for explicit `GenServer.call/3` on the wrapping worker.
+  """
+  @doc since: "1.2.0"
+  @callback call(message :: any(), from :: GenServer.from(), {id :: id(), payload :: term()}) ::
+              any()
+
+  @doc """
+  The method that will be called before the worker is terminated.
+  """
+  @doc since: "1.2.0"
+  @callback terminate(reason :: term(), {id :: id(), payload :: term()}) :: any()
+
+  @doc """
   Declares an instance-wide callback to report state; if the startup process
   takes a while, it’d be run in `handle_continue/2` and this function will be
   called after it finishes so that the application might start using it.
@@ -111,7 +124,7 @@ defmodule Tarearbol.DynamicManager do
 
   @doc false
   defmacro __using__(opts) do
-    quote location: :keep do
+    quote generated: true, location: :keep do
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
       @doc false
       @spec namespace :: module()
@@ -132,7 +145,7 @@ defmodule Tarearbol.DynamicManager do
       def dynamic_supervisor_module, do: child_mod(Tarearbol.DynamicSupervisor)
 
       state_module_ast =
-        quote location: :keep do
+        quote generated: true, location: :keep do
           @moduledoc false
           use GenServer
 
@@ -195,10 +208,8 @@ defmodule Tarearbol.DynamicManager do
               do: {:noreply, %{state | children: Map.put(children, id, props)}}
 
           @impl GenServer
-          def handle_cast({:put, id, props}, %__MODULE__{children: children} = state) do
-            children = Map.put(children, id, struct(Tarearbol.DynamicManager.Child, props))
-            {:noreply, %{state | children: children}}
-          end
+          def handle_cast({:put, id, props}, %__MODULE__{} = state),
+            do: handle_cast({:put, id, struct(Tarearbol.DynamicManager.Child, props)}, state)
 
           @impl GenServer
           def handle_cast({:del, id}, %__MODULE__{children: children} = state),
@@ -213,12 +224,18 @@ defmodule Tarearbol.DynamicManager do
       Module.create(@state_module, state_module_ast, __ENV__)
 
       @doc false
+      @spec state_module :: module()
+      def state_module, do: @state_module
+
+      @doc false
       @spec state :: struct()
       def state, do: @state_module.state()
 
+      @registry_module Module.concat(@namespace, Registry)
+
       @doc false
-      @spec state_module :: module()
-      def state_module, do: @state_module
+      @spec registry_module :: module()
+      def registry_module, do: @registry_module
 
       require Logger
 
@@ -236,7 +253,28 @@ defmodule Tarearbol.DynamicManager do
         if Enum.random(1..3) == 1, do: :halt, else: {:ok, 42}
       end
 
-      defoverridable perform: 2
+      @impl Tarearbol.DynamicManager
+      def call(_message, _from, {id, _payload}) do
+        Logger.warn(
+          "call for id[#{id}] was executed with state\n\n" <>
+            inspect(state_module().state()) <>
+            "\n\nyou want to override `call/3` in your #{inspect(__MODULE__)}\n" <>
+            "to perform some actual work instead of printing this message"
+        )
+
+        :ok
+      end
+
+      @impl Tarearbol.DynamicManager
+      def terminate(reason, {id, payload}) do
+        Logger.info(
+          "Exiting DynamicWorker[" <>
+            inspect(id) <>
+            "] with reason " <> inspect(reason) <> ". Payload: " <> inspect(payload)
+        )
+      end
+
+      defoverridable perform: 2, call: 3, terminate: 2
 
       @impl Tarearbol.DynamicManager
       def handle_state_change(state),
@@ -260,7 +298,7 @@ defmodule Tarearbol.DynamicManager do
       @impl Supervisor
       def init(opts) do
         children = [
-          {Registry, [keys: :unique, name: Module.concat(@namespace, Registry)]},
+          {Registry, [keys: :unique, name: @registry_module]},
           {@state_module, [manager: __MODULE__]},
           {Tarearbol.DynamicSupervisor, Keyword.put(opts, :manager, __MODULE__)},
           {Tarearbol.InternalWorker, [manager: __MODULE__]}
@@ -274,6 +312,21 @@ defmodule Tarearbol.DynamicManager do
         )
 
         Supervisor.init(children, strategy: :rest_for_one)
+      end
+
+      @doc """
+      Performs a `GenServer.call/3` to the worker specified by `id`.
+
+      `c:Tarearbol.DynamicManager.call/3` callback should be implemented for this to work.
+      """
+      @doc since: "1.2.0"
+      @spec synch_call(id :: Tarearbol.DynamicManager.id(), message :: any()) ::
+              {:ok, any()} | :error
+      def synch_call(id, message) do
+        case Registry.lookup(@registry_module, id) do
+          [{pid, nil}] -> {:ok, GenServer.call(pid, message)}
+          [] -> :error
+        end
       end
 
       @doc """

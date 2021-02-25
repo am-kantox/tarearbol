@@ -85,7 +85,7 @@ defmodule Tarearbol.InternalWorker do
   defp do_put(manager, {id, opts}) do
     do_del(manager, id)
 
-    name = {:via, Registry, {Module.concat(manager.namespace(), Registry), id}}
+    name = {:via, Registry, {manager.registry_module(), id}}
 
     {:ok, pid} =
       DynamicSupervisor.start_child(
@@ -106,7 +106,7 @@ defmodule Tarearbol.InternalWorker do
       %{pid: {:via, Registry, {_, ^id}}} = found ->
         manager.state_module().del(id)
 
-        case Registry.lookup(Module.concat(manager.namespace(), Registry), id) do
+        case Registry.lookup(manager.registry_module(), id) do
           [{pid, _}] ->
             DynamicSupervisor.terminate_child(manager.dynamic_supervisor_module(), pid)
             found
