@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.2.0`** `call/3` and `terminate/2` callbacks in `DynamicManager`, `0` timeout for `perform/2`;
 - **`1.1.2`** transparent support for `Ecto` retries;
 - **`1.0.0`** deprecated local functions in `run_in`/`run_at` in favor of `Tarearbol.Scheduler`;
 - **`0.6.0`** code format, explicit `Task.shutdown`;
