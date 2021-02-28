@@ -13,19 +13,30 @@ defmodule Tarearbol.DynamicManager.Test do
     defmodule PingPong1 do
       use Tarearbol.DynamicManager
       @pid :erlang.term_to_binary(self())
+
+      @impl Tarearbol.DynamicManager
       def children_specs, do: %{@pid => [timeout: 100]}
 
+      @impl Tarearbol.DynamicManager
       def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
         :halt
+      end
+
+      @impl Tarearbol.DynamicManager
+      def call(:ping, _from, {id, _payload}) do
+        {:pong, id}
       end
     end
 
     defmodule PingPong2 do
       use Tarearbol.DynamicManager
       @pid :erlang.term_to_binary(self())
+
+      @impl Tarearbol.DynamicManager
       def children_specs, do: %{@pid => [timeout: 100]}
 
+      @impl Tarearbol.DynamicManager
       def perform(i, _) do
         send(:erlang.binary_to_term(i), "pong")
         :halt
@@ -35,8 +46,11 @@ defmodule Tarearbol.DynamicManager.Test do
     defmodule PingPong3 do
       use Tarearbol.DynamicManager
       @pid :erlang.term_to_binary(self())
+
+      @impl Tarearbol.DynamicManager
       def children_specs, do: %{{:foo, @pid} => [timeout: 100]}
 
+      @impl Tarearbol.DynamicManager
       def perform({:foo, pid}, _) do
         send(:erlang.binary_to_term(pid), "pong")
         {:ok, "pong"}
@@ -46,6 +60,9 @@ defmodule Tarearbol.DynamicManager.Test do
     {:ok, pid1} = PingPong1.start_link()
     {:ok, pid2} = PingPong2.start_link()
     {:ok, pid3} = PingPong3.start_link()
+
+    this = :erlang.term_to_binary(self())
+    assert PingPong1.synch_call(this, :ping) == {:ok, {:pong, this}}
 
     assert_receive "pong", 200
     assert_receive "pong", 200
@@ -71,28 +88,31 @@ defmodule Tarearbol.DynamicManager.Test do
   end
 
   test "tracks crashes" do
-    defmodule PingPong3 do
+    defmodule PingPong4 do
       use Tarearbol.DynamicManager
       @pid :erlang.term_to_binary(self())
+
+      @impl Tarearbol.DynamicManager
       def children_specs, do: %{@pid => [timeout: 100]}
 
+      @impl Tarearbol.DynamicManager
       def perform(i, _),
         do: {:ok, send(:erlang.binary_to_term(i), "pong")}
     end
 
-    {:ok, pid3} = PingPong3.start_link()
+    {:ok, pid3} = PingPong4.start_link()
     assert_receive "pong", 200
-    PingPong3.put(:erlang.term_to_binary(self()), timeout: 100)
+    PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
     assert_receive "pong", 200
-    PingPong3.put(:erlang.term_to_binary(self()), timeout: 100)
-    assert map_size(PingPong3.state_module().state().children) == 1
+    PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
+    assert map_size(PingPong4.state_module().state().children) == 1
     assert_receive "pong", 200
-    PingPong3.del(:erlang.term_to_binary(self()))
+    PingPong4.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
-    assert map_size(PingPong3.state_module().state().children) == 0
+    assert map_size(PingPong4.state_module().state().children) == 0
     GenServer.stop(pid3)
 
-    Enum.each([PingPong3], fn mod ->
+    Enum.each([PingPong4], fn mod ->
       :code.delete(mod)
       :code.purge(mod)
       mod = Module.concat([mod, State])
