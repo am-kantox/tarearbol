@@ -7,7 +7,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 1.0"}
+    {:tarearbol, "~> 1.2"}
   ]
 end
 ```
@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.2.1`** `cast/2` and standard replies from worker (:halt | :replace | :ok | any()};
 - **`1.2.0`** `call/3` and `terminate/2` callbacks in `DynamicManager`, `0` timeout for `perform/2`;
 - **`1.1.2`** transparent support for `Ecto` retries;
 - **`1.0.0`** deprecated local functions in `run_in`/`run_at` in favor of `Tarearbol.Scheduler`;
