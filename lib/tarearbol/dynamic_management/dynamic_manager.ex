@@ -47,6 +47,19 @@ defmodule Tarearbol.DynamicManager do
   @typedoc "Identifier of the child process"
   @type id :: any()
 
+  @typedoc "Payload associated with the worker"
+  @type payload :: any()
+
+  @typedoc "Expected response from the `DymanicManager` implementation"
+  @type response ::
+          :halt
+          | :multihalt
+          | {:replace, payload()}
+          | {:replace, id(), payload()}
+          | {{:timeout, integer()}, payload()}
+          | {:ok, any()}
+          | any()
+
   @doc """
   This function is called to retrieve the map of children with name as key
   and a workers as the value.
@@ -82,26 +95,26 @@ defmodule Tarearbol.DynamicManager do
   - or **_deprecated_** anything else will be treated as a result
   """
   @doc since: "0.9.0"
-  @callback perform(id :: id(), payload :: term()) :: any()
+  @callback perform(id :: id(), payload :: payload()) :: response()
 
   @doc """
   The method to implement for explicit `GenServer.call/3` on the wrapping worker.
   """
   @doc since: "1.2.0"
-  @callback call(message :: any(), from :: GenServer.from(), {id :: id(), payload :: term()}) ::
-              any()
+  @callback call(message :: any(), from :: GenServer.from(), {id :: id(), payload :: payload()}) ::
+              response()
 
   @doc """
   The method to implement for explicit `GenServer.cast/2` on the wrapping worker.
   """
   @doc since: "1.2.1"
-  @callback cast(message :: any(), {id :: id(), payload :: term()}) :: :ok
+  @callback cast(message :: any(), {id :: id(), payload :: payload()}) :: response()
 
   @doc """
   The method that will be called before the worker is terminated.
   """
   @doc since: "1.2.0"
-  @callback terminate(reason :: term(), {id :: id(), payload :: term()}) :: any()
+  @callback terminate(reason :: term(), {id :: id(), payload :: payload()}) :: any()
 
   @doc """
   Declares an instance-wide callback to report state; if the startup process
@@ -124,6 +137,12 @@ defmodule Tarearbol.DynamicManager do
 
   defmodule Child do
     @moduledoc false
+    @type t :: %{
+            __struct__: __MODULE__,
+            pid: pid(),
+            value: Tarearbol.DynamicManager.payload(),
+            opts: keyword()
+          }
     @enforce_keys [:pid, :value]
     defstruct [:pid, :value, :opts]
   end
@@ -162,7 +181,7 @@ defmodule Tarearbol.DynamicManager do
           @type t :: %{
                   __struct__: __MODULE__,
                   state: :down | :up | :starting | :unknown,
-                  children: map(),
+                  children: %{optional(DynamicManager.id()) => DynamicManager.Child.t()},
                   manager: module()
                 }
 
@@ -176,7 +195,7 @@ defmodule Tarearbol.DynamicManager do
           @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
           def update_state(state), do: GenServer.cast(__MODULE__, {:update_state, state})
 
-          @spec put(id :: DynamicManager.id(), props :: map()) :: :ok
+          @spec put(id :: DynamicManager.id(), props :: map() | keyword()) :: :ok
           def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
 
           @spec del(id :: DynamicManager.id()) :: :ok
@@ -208,14 +227,14 @@ defmodule Tarearbol.DynamicManager do
 
           @impl GenServer
           def handle_cast(
-                {:put, id, %Tarearbol.DynamicManager.Child{} = props},
+                {:put, id, %DynamicManager.Child{} = props},
                 %__MODULE__{children: children} = state
               ),
               do: {:noreply, %{state | children: Map.put(children, id, props)}}
 
           @impl GenServer
           def handle_cast({:put, id, props}, %__MODULE__{} = state),
-            do: handle_cast({:put, id, struct(Tarearbol.DynamicManager.Child, props)}, state)
+            do: handle_cast({:put, id, struct(DynamicManager.Child, props)}, state)
 
           @impl GenServer
           def handle_cast({:del, id}, %__MODULE__{children: children} = state),

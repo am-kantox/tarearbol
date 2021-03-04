@@ -5,29 +5,14 @@ defmodule Tarearbol.DynamicWorker do
   use GenServer
   require Logger
 
-  @typedoc "ID of the worker"
-  @type id :: term()
-
-  @typedoc "Payload associated with the worker"
-  @type payload :: any()
-
   @typedoc "Internal state of the worker"
   @type state :: %{
-          id: id(),
+          id: Tarearbol.DynamicManager.id(),
           lull: float(),
           manager: module(),
-          payload: payload(),
+          payload: Tarearbol.DynamicManager.payload(),
           timeout: integer()
         }
-
-  @typedoc "Expected response from the DymanicManager implementation"
-  @type response ::
-          :halt
-          | :multihalt
-          | {:replace, payload()}
-          | {:replace, id(), payload()}
-          | {:ok, any()}
-          | any()
 
   @default_opts %{
     timeout: 1_000,
@@ -37,8 +22,8 @@ defmodule Tarearbol.DynamicWorker do
 
   @spec start_link([
           {:manager, atom()}
-          | {:id, any()}
-          | {:payload, term()}
+          | {:id, Tarearbol.DynamicManager.id()}
+          | {:payload, Tarearbol.DynamicManager.payload()}
           | {:timeout, non_neg_integer()}
           | {:lull, float()}
         ]) :: :ignore | {:error, any()} | {:ok, pid()}
@@ -147,13 +132,19 @@ defmodule Tarearbol.DynamicWorker do
   defp schedule_work(timeout) when timeout < 100, do: schedule_work(100)
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 
-  @spec reschedule(module(), id(), any(), integer()) :: reference()
+  @spec reschedule(
+          module(),
+          Tarearbol.DynamicManager.id(),
+          Tarearbol.DynamicManager.payload(),
+          integer()
+        ) ::
+          reference()
   defp reschedule(state, id, value, timeout) do
     state.put(id, %{state.get(id) | value: value})
     schedule_work(timeout)
   end
 
-  @spec handle_response(response(), state) :: state when state: state()
+  @spec handle_response(Tarearbol.DynamicManager.response(), state) :: state when state: state()
   defp handle_response(
          response,
          %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state

@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.3.0`** standardized types, better docs;
 - **`1.2.1`** `cast/2` and standard replies from worker (:halt | :replace | :ok | any()};
 - **`1.2.0`** `call/3` and `terminate/2` callbacks in `DynamicManager`, `0` timeout for `perform/2`;
 - **`1.1.2`** transparent support for `Ecto` retries;
