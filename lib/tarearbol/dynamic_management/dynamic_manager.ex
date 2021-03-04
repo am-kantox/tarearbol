@@ -92,6 +92,12 @@ defmodule Tarearbol.DynamicManager do
               any()
 
   @doc """
+  The method to implement for explicit `GenServer.cast/2` on the wrapping worker.
+  """
+  @doc since: "1.2.1"
+  @callback cast(message :: any(), {id :: id(), payload :: term()}) :: :ok
+
+  @doc """
   The method that will be called before the worker is terminated.
   """
   @doc since: "1.2.0"
@@ -266,6 +272,18 @@ defmodule Tarearbol.DynamicManager do
       end
 
       @impl Tarearbol.DynamicManager
+      def cast(_message, {id, _payload}) do
+        Logger.warn(
+          "cast for id[#{id}] was executed with state\n\n" <>
+            inspect(state_module().state()) <>
+            "\n\nyou want to override `cast/2` in your #{inspect(__MODULE__)}\n" <>
+            "to perform some actual work instead of printing this message"
+        )
+
+        :ok
+      end
+
+      @impl Tarearbol.DynamicManager
       def terminate(reason, {id, payload}) do
         Logger.info(
           "Exiting DynamicWorker[" <>
@@ -274,7 +292,7 @@ defmodule Tarearbol.DynamicManager do
         )
       end
 
-      defoverridable perform: 2, call: 3, terminate: 2
+      defoverridable perform: 2, call: 3, cast: 2, terminate: 2
 
       @impl Tarearbol.DynamicManager
       def handle_state_change(state),
@@ -330,6 +348,20 @@ defmodule Tarearbol.DynamicManager do
       end
 
       @doc """
+      Performs a `GenServer.cast/2` to the worker specified by `id`.
+
+      `c:Tarearbol.DynamicManager.cast/2` callback should be implemented for this to work.
+      """
+      @doc since: "1.2.1"
+      @spec asynch_call(id :: Tarearbol.DynamicManager.id(), message :: any()) :: :ok | :error
+      def asynch_call(id, message) do
+        case Registry.lookup(@registry_module, id) do
+          [{pid, nil}] -> GenServer.cast(pid, message)
+          [] -> :error
+        end
+      end
+
+      @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
       behaviour to the list of supervised children
       """
@@ -359,6 +391,11 @@ defmodule Tarearbol.DynamicManager do
       the supervised worker
       """
       def get(id), do: Tarearbol.InternalWorker.get(internal_worker_module(), id)
+
+      @doc """
+      Restarts the `DynamicManager` to the clean state
+      """
+      def restart, do: Tarearbol.InternalWorker.restart(internal_worker_module())
     end
   end
 end

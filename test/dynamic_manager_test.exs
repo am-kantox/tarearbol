@@ -15,7 +15,7 @@ defmodule Tarearbol.DynamicManager.Test do
       @pid :erlang.term_to_binary(self())
 
       @impl Tarearbol.DynamicManager
-      def children_specs, do: %{@pid => [timeout: 100]}
+      def children_specs, do: %{@pid => [payload: 0, timeout: 200]}
 
       @impl Tarearbol.DynamicManager
       def perform(i, _) do
@@ -24,8 +24,13 @@ defmodule Tarearbol.DynamicManager.Test do
       end
 
       @impl Tarearbol.DynamicManager
-      def call(:ping, _from, {id, _payload}) do
-        {:pong, id}
+      def call(:ping, _from, {id, payload}) do
+        {:pong, {id, payload}}
+      end
+
+      @impl Tarearbol.DynamicManager
+      def cast(:+, {_id, payload}) do
+        {:replace, payload + 1}
       end
     end
 
@@ -62,13 +67,15 @@ defmodule Tarearbol.DynamicManager.Test do
     {:ok, pid3} = PingPong3.start_link()
 
     this = :erlang.term_to_binary(self())
-    assert PingPong1.synch_call(this, :ping) == {:ok, {:pong, this}}
+    assert PingPong1.asynch_call(this, :+) == :ok
+    assert PingPong1.asynch_call(this, :+) == :ok
+    assert PingPong1.synch_call(this, :ping) == {:ok, {:pong, {this, 2}}}
 
     assert_receive "pong", 200
     assert_receive "pong", 200
     assert_receive "pong", 200
 
-    Process.sleep(100)
+    Process.sleep(200)
 
     assert PingPong1.state_module().state().children == %{}
     assert PingPong2.state_module().state().children == %{}
@@ -100,7 +107,7 @@ defmodule Tarearbol.DynamicManager.Test do
         do: {:ok, send(:erlang.binary_to_term(i), "pong")}
     end
 
-    {:ok, pid3} = PingPong4.start_link()
+    {:ok, pid4} = PingPong4.start_link()
     assert_receive "pong", 200
     PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
     assert_receive "pong", 200
@@ -110,7 +117,7 @@ defmodule Tarearbol.DynamicManager.Test do
     PingPong4.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
     assert map_size(PingPong4.state_module().state().children) == 0
-    GenServer.stop(pid3)
+    GenServer.stop(pid4)
 
     Enum.each([PingPong4], fn mod ->
       :code.delete(mod)

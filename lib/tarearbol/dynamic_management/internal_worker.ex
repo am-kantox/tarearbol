@@ -56,6 +56,9 @@ defmodule Tarearbol.InternalWorker do
   @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
+  @spec restart(module_name :: module()) :: :ok
+  def restart(module_name), do: GenServer.cast(module_name, :restart)
+
   @impl GenServer
   def handle_continue(:init, [manager: manager] = state) do
     Enum.each(manager.children_specs(), &do_put(manager, &1))
@@ -69,6 +72,15 @@ defmodule Tarearbol.InternalWorker do
   def handle_cast({:put, id, opts}, [manager: manager] = state) do
     do_put(manager, {id, opts})
     {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_cast(:restart, [manager: manager] = state) do
+    manager.state_module()
+    |> Process.whereis()
+    |> Process.exit(:shutdown)
+
+    {:noreply, :shutdown, state}
   end
 
   @impl GenServer
