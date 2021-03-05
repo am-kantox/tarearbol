@@ -418,7 +418,14 @@ defmodule Tarearbol.Crontab do
 
       {from, till, int} ->
         {:ok,
-         "rem(#{@prefix}#{key}, #{int}) == #{rem(from, int)} && #{@prefix}#{key} >= #{from} && #{@prefix}#{key} <= #{till}"}
+         Enum.join(
+           [
+             "rem(#{@prefix}#{key}, #{int}) == #{rem(from, int)}",
+             "#{@prefix}#{key} >= #{from}",
+             "#{@prefix}#{key} <= #{till}"
+           ],
+           " && "
+         )}
     end
   end
 
