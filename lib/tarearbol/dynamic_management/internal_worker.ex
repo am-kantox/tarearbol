@@ -93,7 +93,7 @@ defmodule Tarearbol.InternalWorker do
   def handle_call({:get, id}, _from, [manager: manager] = state),
     do: {:reply, do_get(manager, id), state}
 
-  @spec do_put(manager :: module(), {id :: any(), opts :: Enum.t()}) :: pid()
+  @spec do_put(manager :: module(), {id :: DynamicManager.id(), opts :: Enum.t()}) :: pid()
   defp do_put(manager, {id, opts}) do
     do_del(manager, id)
 

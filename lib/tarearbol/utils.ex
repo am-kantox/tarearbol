@@ -98,4 +98,10 @@ defmodule Tarearbol.Utils do
   @doc false
   def random_module_name(prefix \\ "M"),
     do: Enum.join([prefix, abs(:erlang.unique_integer())], "_")
+
+  #############################################################################
+
+  @doc false
+  def get_opt(opts, name, default \\ nil),
+    do: Keyword.get(opts, name, Application.get_env(:tarearbol, name, default))
 end

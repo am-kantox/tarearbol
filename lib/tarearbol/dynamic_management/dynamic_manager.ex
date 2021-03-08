@@ -75,7 +75,7 @@ defmodule Tarearbol.DynamicManager do
   into the state under `children` key.
   """
   @doc since: "0.9.0"
-  @callback children_specs :: %{required(binary()) => Enum.t()}
+  @callback children_specs :: %{required(id()) => Enum.t()}
 
   @doc """
   The main function, doing all the job, supervised.
@@ -141,19 +141,52 @@ defmodule Tarearbol.DynamicManager do
             __struct__: __MODULE__,
             pid: pid(),
             value: Tarearbol.DynamicManager.payload(),
+            busy?: nil | DateTime.t(),
             opts: keyword()
           }
     @enforce_keys [:pid, :value]
-    defstruct [:pid, :value, :opts]
+    defstruct [:pid, :value, :opts, :busy?]
   end
 
   @doc false
   defmacro __using__(opts) do
+    {continue, opts} = Keyword.pop(opts, :continue)
+
     quote generated: true, location: :keep do
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
+
       @doc false
       @spec namespace :: module()
       def namespace, do: @namespace
+
+      @continue_handler (case unquote(continue) do
+                           nil ->
+                             nil
+
+                           fun when is_function(fun, 0) ->
+                             fun
+
+                           fun when is_function(fun, 1) ->
+                             fun
+
+                           fun when is_function(fun, 2) ->
+                             fun
+
+                           {mod, fun, arity}
+                           when is_atom(mod) and is_atom(fun) and arity in [0, 1, 2] ->
+                             Function.capture(mod, fun, arity)
+
+                           {mod, fun} when is_atom(mod) and is_atom(fun) ->
+                             Function.capture(mod, fun, 1)
+
+                           mod when is_atom(mod) ->
+                             Function.capture(mod, :continue, 1)
+                         end)
+
+      @doc false
+      @spec continue_handler ::
+              nil | (Tarearbol.DynamicManager.payload() -> Tarearbol.DynamicManager.payload())
+      def continue_handler, do: @continue_handler
 
       @spec child_mod(module :: module() | list()) :: module()
       defp child_mod(module) when is_atom(module), do: child_mod(Module.split(module))
@@ -256,6 +289,10 @@ defmodule Tarearbol.DynamicManager do
       @spec state :: struct()
       def state, do: @state_module.state()
 
+      @doc false
+      @spec free :: %Stream{}
+      def free, do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
+
       @registry_module Module.concat(@namespace, Registry)
 
       @doc false
@@ -357,8 +394,17 @@ defmodule Tarearbol.DynamicManager do
       `c:Tarearbol.DynamicManager.call/3` callback should be implemented for this to work.
       """
       @doc since: "1.2.0"
-      @spec synch_call(id :: Tarearbol.DynamicManager.id(), message :: any()) ::
+      @spec synch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
               {:ok, any()} | :error
+      def synch_call(nil, message) do
+        free()
+        |> Enum.take(1)
+        |> case do
+          [] -> :error
+          [{_id, %Child{pid: pid}}] -> {:ok, GenServer.call(pid, message)}
+        end
+      end
+
       def synch_call(id, message) do
         case Registry.lookup(@registry_module, id) do
           [{pid, nil}] -> {:ok, GenServer.call(pid, message)}
@@ -372,7 +418,17 @@ defmodule Tarearbol.DynamicManager do
       `c:Tarearbol.DynamicManager.cast/2` callback should be implemented for this to work.
       """
       @doc since: "1.2.1"
-      @spec asynch_call(id :: Tarearbol.DynamicManager.id(), message :: any()) :: :ok | :error
+      @spec asynch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
+              :ok | :error
+      def asynch_call(nil, message) do
+        free()
+        |> Enum.take(1)
+        |> case do
+          [] -> :error
+          [{_id, %Child{pid: pid}}] -> GenServer.cast(pid, message)
+        end
+      end
+
       def asynch_call(id, message) do
         case Registry.lookup(@registry_module, id) do
           [{pid, nil}] -> GenServer.cast(pid, message)
