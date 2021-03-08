@@ -69,10 +69,13 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_info(:work, %{manager: manager, id: id, payload: payload} = state) do
-    id
-    |> handle_request(manager)
-    |> manager.perform(payload)
-    |> handle_response(state)
+    state =
+      id
+      |> handle_request(manager)
+      |> manager.perform(payload)
+      |> handle_response(state)
+
+    {:noreply, state}
   end
 
   @impl GenServer
