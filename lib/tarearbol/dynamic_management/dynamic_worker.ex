@@ -124,11 +124,24 @@ defmodule Tarearbol.DynamicWorker do
     id
   end
 
-  @spec handle_response(Tarearbol.DynamicManager.response(), state) :: state when state: state()
+  @spec handle_response(reschedule :: boolean(), Tarearbol.DynamicManager.response(), state) ::
+          state
+        when state: state()
   defp handle_response(
+         reschedule \\ true,
          response,
          %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state
        ) do
+    if reschedule, do: schedule_work(timeout)
+
+    restate = fn payload ->
+      manager.state_module().put(id, %{
+        manager.state_module().get(id)
+        | value: payload,
+          busy?: nil
+      })
+    end
+
     case response do
       :halt ->
         Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
@@ -139,67 +152,36 @@ defmodule Tarearbol.DynamicWorker do
         state
 
       {:replace, ^payload} ->
-        manager.state_module().put(id, %{manager.state_module().get(id) | busy?: nil})
+        restate.(payload)
         state
 
       {:replace, payload} ->
-        manager.state_module().put(id, %{
-          manager.state_module().get(id)
-          | value: payload,
-            busy?: nil
-        })
-
-        schedule_work(timeout)
+        restate.(payload)
         %{state | payload: payload}
 
       {:replace, ^id, ^payload} ->
-        manager.state_module().put(id, %{manager.state_module().get(id) | busy?: nil})
+        restate.(payload)
         state
 
       {:replace, ^id, payload} ->
-        manager.state_module().put(id, %{
-          manager.state_module().get(id)
-          | value: payload,
-            busy?: nil
-        })
-
-        schedule_work(timeout)
+        restate.(payload)
         %{state | payload: payload}
 
       {:replace, new_id, payload} ->
         Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
         Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
-        schedule_work(timeout)
         %{state | id: new_id, payload: payload}
 
       {{:timeout, timeout}, result} ->
-        manager.state_module().put(id, %{
-          manager.state_module().get(id)
-          | value: result,
-            busy?: nil
-        })
-
-        schedule_work(timeout * lull)
-        state
+        restate.(result)
+        %{state | timeout: timeout}
 
       {:ok, result} ->
-        manager.state_module().put(id, %{
-          manager.state_module().get(id)
-          | value: result,
-            busy?: nil
-        })
-
-        schedule_work(timeout)
+        restate.(result)
         state
 
       result ->
-        manager.state_module().put(id, %{
-          manager.state_module().get(id)
-          | value: result,
-            busy?: nil
-        })
-
-        schedule_work(timeout)
+        restate.(result)
         state
     end
   end
