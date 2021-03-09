@@ -149,13 +149,12 @@ defmodule Tarearbol.DynamicManager.Test do
     assert_receive "pong", 500
     refute_receive "pong", 200
     assert_receive "pong", 500
-    # Process.sleep(2_000)
     PingPong5.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
     assert map_size(PingPong5.state_module().state().children) == 0
     GenServer.stop(pid5)
 
-    Enum.each([PingPong4], fn mod ->
+    Enum.each([PingPong5], fn mod ->
       :code.delete(mod)
       :code.purge(mod)
       mod = Module.concat([mod, State])
