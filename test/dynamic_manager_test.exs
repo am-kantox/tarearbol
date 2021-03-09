@@ -127,4 +127,40 @@ defmodule Tarearbol.DynamicManager.Test do
       :code.purge(mod)
     end)
   end
+
+  test "timeout" do
+    defmodule PingPong5 do
+      use Tarearbol.DynamicManager
+      @pid :erlang.term_to_binary(self())
+
+      @impl Tarearbol.DynamicManager
+      def children_specs, do: %{@pid => [timeout: 100, payload: 100]}
+
+      @impl Tarearbol.DynamicManager
+      def perform(i, timeout) do
+        send(:erlang.binary_to_term(i), "pong")
+        {{:timeout, timeout * 2}, timeout * 2}
+      end
+    end
+
+    {:ok, pid5} = PingPong5.start_link()
+    refute_receive "pong", 50
+    assert_receive "pong", 500
+    assert_receive "pong", 500
+    refute_receive "pong", 200
+    assert_receive "pong", 500
+    # Process.sleep(2_000)
+    PingPong5.del(:erlang.term_to_binary(self()))
+    Process.sleep(10)
+    assert map_size(PingPong5.state_module().state().children) == 0
+    GenServer.stop(pid5)
+
+    Enum.each([PingPong4], fn mod ->
+      :code.delete(mod)
+      :code.purge(mod)
+      mod = Module.concat([mod, State])
+      :code.delete(mod)
+      :code.purge(mod)
+    end)
+  end
 end

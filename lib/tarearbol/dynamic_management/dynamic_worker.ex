@@ -172,9 +172,9 @@ defmodule Tarearbol.DynamicWorker do
         Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
         %{state | id: new_id, payload: payload}
 
-      {{:timeout, timeout}, result} ->
+      {{:timeout, new_timeout}, result} ->
         restate.(result)
-        %{state | timeout: timeout}
+        %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
 
       {:ok, result} ->
         restate.(result)
