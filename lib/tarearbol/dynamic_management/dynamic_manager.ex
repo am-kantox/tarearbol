@@ -59,6 +59,13 @@ defmodule Tarearbol.DynamicManager do
           | {:ok, any()}
           | any()
 
+  @type init_handler ::
+          nil
+          | (() -> Tarearbol.DynamicManager.payload())
+          | (Tarearbol.DynamicManager.payload() -> Tarearbol.DynamicManager.payload())
+          | (Tarearbol.DynamicManager.id(), Tarearbol.DynamicManager.payload() ->
+               Tarearbol.DynamicManager.payload())
+
   @doc """
   This function is called to retrieve the map of children with name as key
   and a workers as the value.
@@ -149,7 +156,7 @@ defmodule Tarearbol.DynamicManager do
 
   @doc false
   defmacro __using__(opts) do
-    {continue, opts} = Keyword.pop(opts, :continue)
+    {init_handler, opts} = Keyword.pop(opts, :init)
     {distributed, opts} = Keyword.pop(opts, :distributed)
 
     quote generated: true, location: :keep do
@@ -159,34 +166,30 @@ defmodule Tarearbol.DynamicManager do
       @spec namespace :: module()
       def namespace, do: @namespace
 
-      @continue_handler (case unquote(continue) do
-                           nil ->
-                             nil
+      @init_handler (case unquote(init_handler) do
+                       nil ->
+                         nil
 
-                           fun when is_function(fun, 0) ->
-                             fun
+                       fun when is_function(fun, 0) ->
+                         fun
 
-                           fun when is_function(fun, 1) ->
-                             fun
+                       fun when is_function(fun, 1) ->
+                         fun
 
-                           fun when is_function(fun, 2) ->
-                             fun
+                       fun when is_function(fun, 2) ->
+                         fun
 
-                           {mod, fun, arity}
-                           when is_atom(mod) and is_atom(fun) and arity in [0, 1, 2] ->
-                             Function.capture(mod, fun, arity)
+                       {mod, fun, arity}
+                       when is_atom(mod) and is_atom(fun) and arity in [0, 1, 2] ->
+                         Function.capture(mod, fun, arity)
 
-                           {mod, fun} when is_atom(mod) and is_atom(fun) ->
-                             Function.capture(mod, fun, 1)
-
-                           mod when is_atom(mod) ->
-                             Function.capture(mod, :continue, 1)
-                         end)
+                       {mod, fun} when is_atom(mod) and is_atom(fun) ->
+                         Function.capture(mod, fun, 1)
+                     end)
 
       @doc false
-      @spec continue_handler ::
-              nil | (Tarearbol.DynamicManager.payload() -> Tarearbol.DynamicManager.payload())
-      def continue_handler, do: @continue_handler
+      @spec init_handler :: Tarearbol.DynamicManager.init_handler()
+      def init_handler, do: @init_handler
 
       @spec child_mod(module :: module() | list()) :: module()
       defp child_mod(module) when is_atom(module), do: child_mod(Module.split(module))

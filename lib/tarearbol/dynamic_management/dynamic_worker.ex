@@ -49,7 +49,7 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_continue(:init, %{manager: manager, id: id, payload: payload} = state) do
-    case manager.continue_handler() do
+    case manager.init_handler() do
       nil -> {:noreply, state}
       f when is_function(f, 0) -> {:noreply, %{state | payload: f.()}}
       f when is_function(f, 1) -> {:noreply, %{state | payload: f.(payload)}}
@@ -73,7 +73,7 @@ defmodule Tarearbol.DynamicWorker do
       id
       |> handle_request(manager)
       |> manager.perform(payload)
-      |> handle_response(state)
+      |> handle_response(state, true)
 
     {:noreply, state}
   end
@@ -88,7 +88,7 @@ defmodule Tarearbol.DynamicWorker do
   def handle_call(message, from, %{manager: manager, id: id, payload: payload} = state) do
     handle_request(id, manager)
     reply = manager.call(message, from, {id, payload})
-    state = handle_response(reply, state)
+    state = handle_response(reply, state, false)
 
     reply =
       case reply do
@@ -108,7 +108,7 @@ defmodule Tarearbol.DynamicWorker do
     state =
       message
       |> manager.cast({id, payload})
-      |> handle_response(state)
+      |> handle_response(state, false)
 
     {:noreply, state}
   end
@@ -124,20 +124,20 @@ defmodule Tarearbol.DynamicWorker do
     id
   end
 
-  @spec handle_response(reschedule :: boolean(), Tarearbol.DynamicManager.response(), state) ::
+  @spec handle_response(Tarearbol.DynamicManager.response(), state, boolean()) ::
           state
         when state: state()
   defp handle_response(
-         reschedule \\ true,
          response,
-         %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state
+         %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state,
+         reschedule
        ) do
     if reschedule, do: schedule_work(timeout)
 
-    restate = fn payload ->
+    restate = fn value ->
       manager.state_module().put(id, %{
         manager.state_module().get(id)
-        | value: payload,
+        | value: value,
           busy?: nil
       })
     end

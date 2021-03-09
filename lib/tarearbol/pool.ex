@@ -14,11 +14,11 @@ defmodule Tarearbol.Pool do
       |> Keyword.get(:payload, %{})
       |> Macro.escape()
 
-    continue = Keyword.get(opts, :continue)
+    init = Keyword.get(opts, :init)
 
     ast =
       quote generated: true, location: :keep do
-        use Tarearbol.DynamicManager, continue: unquote(continue)
+        use Tarearbol.DynamicManager, init: unquote(init)
 
         # @before_compile Tarearbol.Pool
         # @on_definition Tarearbol.Pool
@@ -37,7 +37,12 @@ defmodule Tarearbol.Pool do
     ast
   end
 
-  @spec params(:call | :cast, {module(), keyword(), [ast]}) :: ast when ast: Macro.t()
+  @spec fix_fun({atom(), keyword(), nil | [ast]}) :: {atom(), keyword(), [ast]}
+        when ast: Macro.t()
+  defp fix_fun({name, meta, params}) when is_list(params), do: {name, meta, params}
+  defp fix_fun({name, meta, nil}), do: {name, meta, []}
+
+  @spec params(:call | :cast, {atom(), keyword(), [ast]}) :: ast when ast: Macro.t()
   defp params(:call, {fun, meta, params}),
     do: [{:{}, meta, [fun | params]}, {:_from, [], Elixir}, {:κ, [], Elixir}]
 
@@ -69,6 +74,7 @@ defmodule Tarearbol.Pool do
     definition
     |> case do
       {:when, meta, [fun, guards]} ->
+        fun = fix_fun(fun)
         [param | _] = params = params(synch, fun)
 
         [
@@ -78,6 +84,7 @@ defmodule Tarearbol.Pool do
         ]
 
       {_fun, meta, _params} = fun ->
+        fun = fix_fun(fun)
         [param | _] = params = params(synch, fun)
 
         [

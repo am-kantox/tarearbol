@@ -1,17 +1,23 @@
 defmodule Tarearbol.Full do
   @moduledoc false
-  use Tarearbol.Pool, continue: {Tarearbol.Full, :continue, 0}
+  use Tarearbol.Pool, init: &Tarearbol.Full.continue/0, pool_size: 2
 
-  def continue do
-    0
-  end
+  def continue, do: 0
 
-  defsynch foo() do
+  defsynch synch do
     {:replace, payload!() + 1}
   end
 
-  defasynch bar() do
-    Process.sleep(10_000)
-    IO.puts(:bar_casted)
+  defsynch synch(n) do
+    {:replace, payload!() + n}
+  end
+
+  defasynch asynch do
+    Process.sleep(500)
+    {:ok, id!()}
+  end
+
+  defasynch asynch(n) do
+    {:replace, payload!() + n}
   end
 end
