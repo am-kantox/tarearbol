@@ -21,8 +21,6 @@ defmodule Tarearbol.Pool do
         use Tarearbol.DynamicManager, init: unquote(init)
 
         # @before_compile Tarearbol.Pool
-        # @on_definition Tarearbol.Pool
-
         import Tarearbol.Pool, only: [defsynch: 2, defasynch: 2]
 
         def children_specs do
@@ -100,10 +98,6 @@ defmodule Tarearbol.Pool do
       other -> other
     end)
   end
-
-  # def __on_definition__(_env, kind, name, args, guards, body) do
-  #   # IO.inspect({kind, name, args, guards, body}, limit: :infinity)
-  # end
 
   # def __before_compile__(env) do
   #   # IO.inspect(env, limit: :infinity)

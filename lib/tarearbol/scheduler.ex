@@ -187,7 +187,7 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
-  @spec active_jobs :: %{atom() => %Tarearbol.DynamicManager.Child{}}
+  @spec active_jobs :: %{Tarearbol.DynamicManager.id() => %Tarearbol.DynamicManager.Child{}}
   def active_jobs, do: state().children
 
   @doc """

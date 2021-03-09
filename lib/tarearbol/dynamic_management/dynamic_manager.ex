@@ -43,6 +43,7 @@ defmodule Tarearbol.DynamicManager do
   @moduledoc since: "0.9.0"
 
   use Boundary, exports: [Child]
+  require Logger
 
   @typedoc "Identifier of the child process"
   @type id :: any()
@@ -160,6 +161,8 @@ defmodule Tarearbol.DynamicManager do
     {distributed, opts} = Keyword.pop(opts, :distributed)
 
     quote generated: true, location: :keep do
+      @on_definition Tarearbol.DynamicManager
+
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
 
       @doc false
@@ -501,4 +504,31 @@ defmodule Tarearbol.DynamicManager do
       def restart, do: Tarearbol.InternalWorker.restart(internal_worker_module())
     end
   end
+
+  @doc false
+  def __on_definition__(%Macro.Env{module: mod}, kind, name, args, _guards, body) do
+    generated =
+      body
+      |> Macro.prewalk(nil, fn
+        {_, meta, _} = t, nil -> {t, Keyword.get(meta, :generated)}
+        t, acc -> {t, acc}
+      end)
+      |> elem(1)
+
+    report_override(generated, mod, kind, name, length(args))
+  end
+
+  @reserved ~w|
+    asynch_call del dynamic_supervisor_module
+    free get init init_handler internal_worker_module multidel
+    multiput namespace put registry_module restart start_link
+    start_link state state_module synch_call|a
+  defp report_override(nil, mod, kind, name, arity) when name in @reserved,
+    do:
+      Logger.warn("""
+      You are trying to override the reserved function in `#{kind} #{inspect(Function.capture(mod, name, arity))}`.
+      Please consider choosing another name.
+      """)
+
+  defp report_override(_, _, _, _, _), do: :ok
 end
