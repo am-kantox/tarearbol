@@ -53,7 +53,6 @@ defmodule Tarearbol.DynamicManager do
   @typedoc "Expected response from the `DymanicManager` implementation"
   @type response ::
           :halt
-          | :multihalt
           | {:replace, payload()}
           | {:replace, id(), payload()}
           | {{:timeout, integer()}, payload()}
@@ -151,6 +150,7 @@ defmodule Tarearbol.DynamicManager do
   @doc false
   defmacro __using__(opts) do
     {continue, opts} = Keyword.pop(opts, :continue)
+    {distributed, opts} = Keyword.pop(opts, :distributed)
 
     quote generated: true, location: :keep do
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
@@ -436,30 +436,55 @@ defmodule Tarearbol.DynamicManager do
         end
       end
 
+      @put if unquote(distributed), do: :multiput, else: :put
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
-      behaviour to the list of supervised children
+        behaviour to the list of supervised children.
+
+      If `distributed: true` parameter was given to `use Tarearbol.DynamicManager`,
+        puts the worker into all the nodes managed by `Cloister`. `:cloister` dependency
+        must be added to a project to use this feature.
       """
-      def put(id, opts), do: Tarearbol.InternalWorker.put(internal_worker_module(), id, opts)
+      def put(id, opts),
+        do: apply(Tarearbol.InternalWorker, @put, [internal_worker_module(), id, opts])
 
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
-      behaviour to the list of supervised children on all the nodes managed by `Cloister`
-      """
-      def multiput(id, opts),
-        do: Tarearbol.InternalWorker.multiput(internal_worker_module(), id, opts)
+        behaviour to the list of supervised children on all the nodes managed by `Cloister`.
 
+      Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+        and regular `put/2` instead.
+      """
+      @doc deprecated: """
+           Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+             and regular `put/2` instead.
+           """
+      defdelegate multiput(id, opts), to: __MODULE__, as: :put
+
+      @del if unquote(distributed), do: :multidel, else: :del
       @doc """
       Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
       behaviour from the list of supervised children
+
+      If `distributed: true` parameter was given to `use Tarearbol.DynamicManager`,
+        deletes the worker from all the nodes managed by `Cloister`. `:cloister` dependency
+        must be added to a project to use this feature.
       """
-      def del(id), do: Tarearbol.InternalWorker.del(internal_worker_module(), id)
+      def del(id),
+        do: apply(Tarearbol.InternalWorker, @del, [internal_worker_module(), id])
 
       @doc """
       Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
-      behaviour from the list of supervised children on all the nodes managed by `Cloister`
+        behaviour from the list of supervised children on all the nodes managed by `Cloister`.
+
+      Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+        and regular `del/1` instead.
       """
-      def multidel(id), do: Tarearbol.InternalWorker.multidel(internal_worker_module(), id)
+      @doc deprecated: """
+           Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+             and regular `del/1` instead.
+           """
+      defdelegate multidel(id), to: __MODULE__, as: :del
 
       @doc """
       Retrieves the information (`payload`, `timeout`, `lull` etc.) assotiated with

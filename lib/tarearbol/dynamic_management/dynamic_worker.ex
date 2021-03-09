@@ -148,7 +148,13 @@ defmodule Tarearbol.DynamicWorker do
         state
 
       :multihalt ->
-        Tarearbol.InternalWorker.multidel(manager.internal_worker_module(), id)
+        Logger.warning("""
+        Returning `:multihalt` from callbacks is deprecated.
+        Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+          and return regular `:halt` instead.
+        """)
+
+        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
         state
 
       {:replace, ^payload} ->
