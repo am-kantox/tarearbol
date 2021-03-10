@@ -118,7 +118,8 @@ defmodule Tarearbol.Mixfile do
           Tarearbol
         ],
         "Dymanic Supervisor Sugar": [
-          Tarearbol.DynamicManager
+          Tarearbol.DynamicManager,
+          Tarearbol.Pool
         ],
         Scheduler: [
           Tarearbol.Calendar,
@@ -133,6 +134,7 @@ defmodule Tarearbol.Mixfile do
     ]
   end
 
+  defp elixirc_paths(:dev), do: ["lib", "test/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(:ci), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]

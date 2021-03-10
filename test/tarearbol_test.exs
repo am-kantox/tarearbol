@@ -116,14 +116,14 @@ defmodule Tarearbol.Test do
   test "#run_at" do
     count = Enum.count(Tarearbol.Application.children())
 
-    run_at = DateTime.add(DateTime.utc_now(), 100, :millisecond)
+    run_at = DateTime.add(DateTime.utc_now(), 200, :millisecond)
 
-    Tarearbol.Errand.run_at(fn -> Process.sleep(100) end, run_at)
+    Tarearbol.Errand.run_at(fn -> Process.sleep(200) end, run_at)
     Process.sleep(50)
     assert Enum.count(Tarearbol.Application.children()) == count + 1
-    Process.sleep(100)
+    Process.sleep(200)
     assert Enum.count(Tarearbol.Application.children()) == count + 1
-    Process.sleep(100)
+    Process.sleep(200)
     assert Enum.count(Tarearbol.Application.children()) == count
   end
 

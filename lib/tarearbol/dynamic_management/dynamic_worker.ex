@@ -34,7 +34,7 @@ defmodule Tarearbol.DynamicWorker do
       Map.pop(
         opts,
         :name,
-        {:via, Registry, {opts.manager.registry_module(), opts.id}}
+        {:via, Registry, {opts.manager.__registry_module__(), opts.id}}
       )
 
     GenServer.start_link(__MODULE__, opts, name: name)
@@ -44,7 +44,17 @@ defmodule Tarearbol.DynamicWorker do
   def init(opts) do
     Process.flag(:trap_exit, true)
     schedule_work(opts.timeout)
-    {:ok, opts}
+    {:ok, opts, {:continue, :init}}
+  end
+
+  @impl GenServer
+  def handle_continue(:init, %{manager: manager, id: id, payload: payload} = state) do
+    case manager.__init_handler__() do
+      nil -> {:noreply, state}
+      f when is_function(f, 0) -> {:noreply, %{state | payload: f.()}}
+      f when is_function(f, 1) -> {:noreply, %{state | payload: f.(payload)}}
+      f when is_function(f, 2) -> {:noreply, %{state | payload: f.(id, payload)}}
+    end
   end
 
   @impl GenServer
@@ -59,9 +69,13 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_info(:work, %{manager: manager, id: id, payload: payload} = state) do
-    id
-    |> manager.perform(payload)
-    |> handle_response(state)
+    state =
+      id
+      |> handle_request(manager)
+      |> manager.perform(payload)
+      |> handle_response(state, true)
+
+    {:noreply, state}
   end
 
   @impl GenServer
@@ -72,29 +86,16 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_call(message, from, %{manager: manager, id: id, payload: payload} = state) do
+    handle_request(id, manager)
     reply = manager.call(message, from, {id, payload})
+    state = handle_response(reply, state, false)
 
-    {reply, state} =
+    reply =
       case reply do
-        {:replace, payload} ->
-          {payload, %{state | payload: payload}}
-
-        {:replace, ^id, ^payload} ->
-          {payload, state}
-
-        {:replace, ^id, payload} ->
-          {payload, %{state | payload: payload}}
-
-        {:replace, new_id, payload} ->
-          Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-          Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
-          {payload, %{state | id: id, payload: payload}}
-
-        {:ok, payload} ->
-          {payload, state}
-
-        other ->
-          {other, state}
+        {:replace, payload} -> payload
+        {:replace, _, payload} -> payload
+        {:ok, payload} -> payload
+        other -> other
       end
 
     {:reply, reply, state}
@@ -102,27 +103,12 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_cast(message, %{manager: manager, id: id, payload: payload} = state) do
-    reply = manager.cast(message, {id, payload})
+    handle_request(id, manager)
 
     state =
-      case reply do
-        {:replace, payload} ->
-          %{state | payload: payload}
-
-        {:replace, ^id, ^payload} ->
-          state
-
-        {:replace, ^id, payload} ->
-          %{state | payload: payload}
-
-        {:replace, new_id, payload} ->
-          Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-          Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
-          %{state | id: id, payload: payload}
-
-        _ ->
-          state
-      end
+      message
+      |> manager.cast({id, payload})
+      |> handle_response(state, false)
 
     {:noreply, state}
   end
@@ -132,63 +118,75 @@ defmodule Tarearbol.DynamicWorker do
   defp schedule_work(timeout) when timeout < 100, do: schedule_work(100)
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 
-  @spec reschedule(
-          module(),
-          Tarearbol.DynamicManager.id(),
-          Tarearbol.DynamicManager.payload(),
-          integer()
-        ) ::
-          reference()
-  defp reschedule(state, id, value, timeout) do
-    state.put(id, %{state.get(id) | value: value})
-    schedule_work(timeout)
+  @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
+  defp handle_request(id, manager) do
+    manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()})
+    id
   end
 
-  @spec handle_response(Tarearbol.DynamicManager.response(), state) :: state when state: state()
+  @spec handle_response(Tarearbol.DynamicManager.response(), state, boolean()) ::
+          state
+        when state: state()
   defp handle_response(
          response,
-         %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state
+         %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state,
+         reschedule
        ) do
-    case response do
-      :halt ->
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-        state
-
-      :multihalt ->
-        Tarearbol.InternalWorker.multidel(manager.internal_worker_module(), id)
-        state
-
-      {:replace, ^payload} ->
-        state
-
-      {:replace, payload} ->
-        reschedule(manager.state_module(), id, payload, timeout)
-        %{state | payload: payload}
-
-      {:replace, ^id, ^payload} ->
-        state
-
-      {:replace, ^id, payload} ->
-        reschedule(manager.state_module(), id, payload, timeout)
-        %{state | payload: payload}
-
-      {:replace, new_id, payload} ->
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-        Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
-        schedule_work(timeout)
-        %{state | id: new_id, payload: payload}
-
-      {{:timeout, timeout}, result} ->
-        reschedule(manager.state_module(), id, result, timeout * lull)
-        state
-
-      {:ok, result} ->
-        reschedule(manager.state_module(), id, result, timeout)
-        state
-
-      result ->
-        reschedule(manager.state_module(), id, result, timeout * lull)
-        state
+    restate = fn value ->
+      manager.__state_module__().update!(id, &%{&1 | value: value, busy?: nil})
     end
+
+    state =
+      case response do
+        :halt ->
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          state
+
+        :multihalt ->
+          Logger.warning("""
+          Returning `:multihalt` from callbacks is deprecated.
+          Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+            and return regular `:halt` instead.
+          """)
+
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          state
+
+        {:replace, ^payload} ->
+          restate.(payload)
+          state
+
+        {:replace, payload} ->
+          restate.(payload)
+          %{state | payload: payload}
+
+        {:replace, ^id, ^payload} ->
+          restate.(payload)
+          state
+
+        {:replace, ^id, payload} ->
+          restate.(payload)
+          %{state | payload: payload}
+
+        {:replace, new_id, payload} ->
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          Tarearbol.InternalWorker.put(manager.__internal_worker_module__(), new_id, payload)
+          %{state | id: new_id, payload: payload}
+
+        {{:timeout, new_timeout}, result} ->
+          restate.(result)
+          %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
+
+        {:ok, result} ->
+          restate.(result)
+          state
+
+        result ->
+          restate.(result)
+          state
+      end
+
+    if reschedule, do: schedule_work(state.timeout)
+    state
   end
 end

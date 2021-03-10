@@ -9,7 +9,9 @@ defmodule Tarearbol.InternalWorker do
 
   def start_link(manager: manager),
     do:
-      GenServer.start_link(__MODULE__, [manager: manager], name: manager.internal_worker_module())
+      GenServer.start_link(__MODULE__, [manager: manager],
+        name: manager.__internal_worker_module__()
+      )
 
   @impl GenServer
   def init(opts), do: {:ok, opts, {:continue, :init}}
@@ -63,7 +65,7 @@ defmodule Tarearbol.InternalWorker do
   def handle_continue(:init, [manager: manager] = state) do
     Enum.each(manager.children_specs(), &do_put(manager, &1))
 
-    manager.state_module().update_state(:started)
+    manager.__state_module__().update_state(:started)
     manager.handle_state_change(:started)
     {:noreply, state}
   end
@@ -76,7 +78,7 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_cast(:restart, [manager: manager] = state) do
-    manager.state_module()
+    manager.__state_module__()
     |> Process.whereis()
     |> Process.exit(:shutdown)
 
@@ -93,20 +95,20 @@ defmodule Tarearbol.InternalWorker do
   def handle_call({:get, id}, _from, [manager: manager] = state),
     do: {:reply, do_get(manager, id), state}
 
-  @spec do_put(manager :: module(), {id :: any(), opts :: Enum.t()}) :: pid()
+  @spec do_put(manager :: module(), {id :: DynamicManager.id(), opts :: Enum.t()}) :: pid()
   defp do_put(manager, {id, opts}) do
     do_del(manager, id)
 
-    name = {:via, Registry, {manager.registry_module(), id}}
+    name = {:via, Registry, {manager.__registry_module__(), id}}
 
     {:ok, pid} =
       DynamicSupervisor.start_child(
-        manager.dynamic_supervisor_module(),
+        manager.__dynamic_supervisor_module__(),
         {Tarearbol.DynamicWorker,
          opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
       )
 
-    manager.state_module().put(id, %{pid: name, opts: opts})
+    manager.__state_module__().put(id, %{pid: name, opts: opts})
     pid
   end
 
@@ -116,11 +118,11 @@ defmodule Tarearbol.InternalWorker do
     |> do_get(id)
     |> case do
       %{pid: {:via, Registry, {_, ^id}}} = found ->
-        manager.state_module().del(id)
+        manager.__state_module__().del(id)
 
-        case Registry.lookup(manager.registry_module(), id) do
+        case Registry.lookup(manager.__registry_module__(), id) do
           [{pid, _}] ->
-            DynamicSupervisor.terminate_child(manager.dynamic_supervisor_module(), pid)
+            DynamicSupervisor.terminate_child(manager.__dynamic_supervisor_module__(), pid)
             found
 
           [] ->
@@ -136,5 +138,5 @@ defmodule Tarearbol.InternalWorker do
   end
 
   @spec do_get(manager :: module(), id :: DynamicManager.id()) :: map()
-  defp do_get(manager, id), do: manager.state_module().get(id, %{})
+  defp do_get(manager, id), do: manager.__state_module__().get(id, %{})
 end
