@@ -20,7 +20,7 @@ Jobs description are loaded upon application start from one of the following loc
 
 Upon start, it loads jobs schedules and spawns processes for each, managed by `Tarearbol.DynamicManager`. Each job must return on of the following three outcomes.
 
-- `{:ok, any()}` to normally return the result to be stored as last job execution result in the state of `Tarearbol.DynamicSupervisor` and reschedule the job to the next event
+- `{:ok, any()}` to normally return the result to be stored as last job execution result in the state of `Manager` and reschedule the job to the next event
 - `:halt` to prevent further job executions and remove it from the list of scheduled jobs
 - `{{:reschedule, binary()}, any()}` to reschedule the job with new cron record, given as the second parameter of the first tuple.
 

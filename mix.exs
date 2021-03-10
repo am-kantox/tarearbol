@@ -118,7 +118,8 @@ defmodule Tarearbol.Mixfile do
           Tarearbol
         ],
         "Dymanic Supervisor Sugar": [
-          Tarearbol.DynamicManager
+          Tarearbol.DynamicManager,
+          Tarearbol.Pool
         ],
         Scheduler: [
           Tarearbol.Calendar,

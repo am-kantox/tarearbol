@@ -120,11 +120,7 @@ defmodule Tarearbol.DynamicWorker do
 
   @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
   defp handle_request(id, manager) do
-    manager.__state_module__().put(id, %{
-      manager.__state_module__().get(id)
-      | busy?: DateTime.utc_now()
-    })
-
+    manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()})
     id
   end
 
@@ -136,63 +132,61 @@ defmodule Tarearbol.DynamicWorker do
          %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state,
          reschedule
        ) do
-    if reschedule, do: schedule_work(timeout)
-
     restate = fn value ->
-      manager.__state_module__().put(id, %{
-        manager.__state_module__().get(id)
-        | value: value,
-          busy?: nil
-      })
+      manager.__state_module__().update!(id, &%{&1 | value: value, busy?: nil})
     end
 
-    case response do
-      :halt ->
-        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
-        state
+    state =
+      case response do
+        :halt ->
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          state
 
-      :multihalt ->
-        Logger.warning("""
-        Returning `:multihalt` from callbacks is deprecated.
-        Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
-          and return regular `:halt` instead.
-        """)
+        :multihalt ->
+          Logger.warning("""
+          Returning `:multihalt` from callbacks is deprecated.
+          Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
+            and return regular `:halt` instead.
+          """)
 
-        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
-        state
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          state
 
-      {:replace, ^payload} ->
-        restate.(payload)
-        state
+        {:replace, ^payload} ->
+          restate.(payload)
+          state
 
-      {:replace, payload} ->
-        restate.(payload)
-        %{state | payload: payload}
+        {:replace, payload} ->
+          restate.(payload)
+          %{state | payload: payload}
 
-      {:replace, ^id, ^payload} ->
-        restate.(payload)
-        state
+        {:replace, ^id, ^payload} ->
+          restate.(payload)
+          state
 
-      {:replace, ^id, payload} ->
-        restate.(payload)
-        %{state | payload: payload}
+        {:replace, ^id, payload} ->
+          restate.(payload)
+          %{state | payload: payload}
 
-      {:replace, new_id, payload} ->
-        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
-        Tarearbol.InternalWorker.put(manager.__internal_worker_module__(), new_id, payload)
-        %{state | id: new_id, payload: payload}
+        {:replace, new_id, payload} ->
+          Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+          Tarearbol.InternalWorker.put(manager.__internal_worker_module__(), new_id, payload)
+          %{state | id: new_id, payload: payload}
 
-      {{:timeout, new_timeout}, result} ->
-        restate.(result)
-        %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
+        {{:timeout, new_timeout}, result} ->
+          restate.(result)
+          %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
 
-      {:ok, result} ->
-        restate.(result)
-        state
+        {:ok, result} ->
+          restate.(result)
+          state
 
-      result ->
-        restate.(result)
-        state
-    end
+        result ->
+          restate.(result)
+          state
+      end
+
+    if reschedule, do: schedule_work(state.timeout)
+    state
   end
 end

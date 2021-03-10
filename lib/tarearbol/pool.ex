@@ -1,10 +1,33 @@
 defmodule Tarearbol.Pool do
+  @moduledoc since: "1.4.0"
   @moduledoc """
-  The pool of workers.
+  The pool of workers built on top of `Tarearbol.DynamicManager`.
+
+  ## Configuration options:
+
+  - **`pool_size`** the size of the pool, default: `5`
+  - **`payload`** the default payload for all the workers
+    (for more complex initialization, use `init` option below)
+  - **`init`** custom `init` step as described in  `Tarearbol.DynamicManager` docs
+
+  This module exports `defsynch/2` and `defasynch/2` macros allowing to to declare
+    functions that would be managed by a pool behind. Basically, the below would be translated
+    into a message passed to the free worker of the pool.
+
+      defsynch synch(n) do
+        {:ok, payload!() + n}
+      end
+
+  Both macros have three predefined functions declared inside a block
+
+  - **`id!`** returning the `id` of the worker invoked
+  - **`payload!`** returning the `payload` of the worker invoked
+  - **`state!`** returning the `state` of the worker invoked as a tuple `{id, payload}`
   """
 
   alias Tarearbol.Utils
 
+  @doc false
   defmacro __using__(opts) do
     pool_size = Utils.get_opt(opts, :pool_size, 5)
     timeout = Utils.get_opt(opts, :pool_timeout, 0)
@@ -61,9 +84,25 @@ defmodule Tarearbol.Pool do
   #   end
   # end
 
+  @doc since: "1.4.0"
+  @doc """
+  Declares a synchronous function with the same name and block, that will be under the hood
+    routed to the free worker to execute. If there is no free worker at the moment,
+    returns `:error` otherwise returns `{:ok, result}` tuple.
+
+  This function might return any response recognizable by `t:Tarearbol.DynamicManager.response/0`.
+  """
   defmacro defsynch(definition, opts),
     do: do_def(:call, definition, opts)
 
+  @doc since: "1.4.0"
+  @doc """
+  Declares an asynchronous function with the same name and block, that will be under the hood
+    routed to the free worker to execute. If there is no free worker at the moment,
+    returns `:error` otherwise returns `{:ok, result}` tuple.
+
+  This function might return any response recognizable by `t:Tarearbol.DynamicManager.response/0`.
+  """
   defmacro defasynch(definition, opts),
     do: do_def(:cast, definition, opts)
 

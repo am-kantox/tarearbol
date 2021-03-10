@@ -30,9 +30,10 @@ defmodule Tarearbol.DynamicManager do
 
   `DynamicManager` allows dynamic workers management. It exports three functions
 
+      @spec get(id :: id()) :: Enum.t()
       @spec put(id :: id(), opts :: Enum.t()) :: pid()
       @spec del(id :: id()) :: :ok
-      @spec get(id :: id()) :: Enum.t()
+      @spec restart(id :: id()) :: :ok
 
   The semantics of `put/2` arguments is the same as a single `child_spec`,
   `del/1` and `get/1` receive the unique ID of the child and shutdown it or
@@ -50,15 +51,15 @@ defmodule Tarearbol.DynamicManager do
   - **`cast/2`** to handle asynchronous message send to worker
   - **`terminate/2`** to handle worker process termination
 
-  All the above should return a value of `t:response()` type.
+  All the above should return a value of `t:Tarearbol.DynamicManager.response/0` type.
 
   Also, the implementing module might use a custom initialization function
     to e. g. dynamically build payload. Is should be passed to `use DynamicManager`
     as a parameter `init: handler` and might be a tuple `{module(), function(), arity()}` or
     a captured function `&MyMod.my_init/1`. Arities 0, 1 and 2 are allowed, as described by
-    `t:init_handler()` type.
+    `t:Tarearbol.DynamicManager.init_handler/0` type.
 
-  The worker process will call this function from `GenServer.handle_continue/2` callback.
+  The worker process will call this function from `c:GenServer.handle_continue/2` callback.
   """
   @moduledoc since: "0.9.0"
 
@@ -213,15 +214,15 @@ defmodule Tarearbol.DynamicManager do
                          Function.capture(mod, fun, 1)
                      end)
 
-      @doc false
-      @spec __init_handler__ :: Tarearbol.DynamicManager.init_handler()
-      def __init_handler__, do: @init_handler
-
       @spec __child_mod__(module :: module() | list()) :: module()
       defp __child_mod__(module) when is_atom(module), do: __child_mod__(Module.split(module))
 
       defp __child_mod__(module) when is_list(module),
         do: Module.concat(@namespace, List.last(module))
+
+      @doc false
+      @spec __init_handler__ :: Tarearbol.DynamicManager.init_handler()
+      def __init_handler__, do: @init_handler
 
       @doc false
       @spec __internal_worker_module__ :: module()
@@ -238,14 +239,14 @@ defmodule Tarearbol.DynamicManager do
 
           alias Tarearbol.DynamicManager
 
-          defstruct state: :down, children: %{}, manager: nil
-
           @type t :: %{
                   __struct__: __MODULE__,
                   state: :down | :up | :starting | :unknown,
                   children: %{optional(DynamicManager.id()) => DynamicManager.Child.t()},
                   manager: module()
                 }
+
+          defstruct state: :down, children: %{}, manager: nil
 
           @spec start_link([{:manager, atom()}]) :: GenServer.on_start()
           def start_link(manager: manager),
@@ -260,10 +261,16 @@ defmodule Tarearbol.DynamicManager do
           @spec put(id :: DynamicManager.id(), props :: map() | keyword()) :: :ok
           def put(id, props), do: GenServer.cast(__MODULE__, {:put, id, props})
 
+          @spec update!(
+                  id :: DynamicManager.id(),
+                  (DynamicManager.Child.t() -> DynamicManager.Child.t())
+                ) :: :ok
+          def update!(id, fun), do: GenServer.cast(__MODULE__, {:update!, id, fun})
+
           @spec del(id :: DynamicManager.id()) :: :ok
           def del(id), do: GenServer.cast(__MODULE__, {:del, id})
 
-          @spec get(id :: DynamicManager.id()) :: :ok
+          @spec get(id :: DynamicManager.id()) :: DynamicManager.Child.t()
           def get(id, default \\ nil),
             do: GenServer.call(__MODULE__, {:get, id, default})
 
@@ -299,6 +306,10 @@ defmodule Tarearbol.DynamicManager do
             do: handle_cast({:put, id, struct(DynamicManager.Child, props)}, state)
 
           @impl GenServer
+          def handle_cast({:update!, id, fun}, %__MODULE__{children: children} = state),
+            do: {:noreply, %{state | children: Map.update!(children, id, fun)}}
+
+          @impl GenServer
           def handle_cast({:del, id}, %__MODULE__{children: children} = state),
             do: {:noreply, %{state | children: Map.delete(children, id)}}
 
@@ -314,15 +325,15 @@ defmodule Tarearbol.DynamicManager do
       @spec __state_module__ :: module()
       def __state_module__, do: @state_module
 
-      @doc false
-      @spec state :: struct()
-      def state, do: @state_module.state()
-
       @registry_module Module.concat(@namespace, Registry)
 
       @doc false
       @spec __registry_module__ :: module()
       def __registry_module__, do: @registry_module
+
+      @doc false
+      @spec state :: struct()
+      def state, do: @state_module.state()
 
       @doc false
       @spec free :: %Stream{}
