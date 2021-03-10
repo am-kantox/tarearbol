@@ -34,7 +34,7 @@ defmodule Tarearbol.DynamicWorker do
       Map.pop(
         opts,
         :name,
-        {:via, Registry, {opts.manager.registry_module(), opts.id}}
+        {:via, Registry, {opts.manager.__registry_module__(), opts.id}}
       )
 
     GenServer.start_link(__MODULE__, opts, name: name)
@@ -49,7 +49,7 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_continue(:init, %{manager: manager, id: id, payload: payload} = state) do
-    case manager.init_handler() do
+    case manager.__init_handler__() do
       nil -> {:noreply, state}
       f when is_function(f, 0) -> {:noreply, %{state | payload: f.()}}
       f when is_function(f, 1) -> {:noreply, %{state | payload: f.(payload)}}
@@ -120,7 +120,11 @@ defmodule Tarearbol.DynamicWorker do
 
   @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
   defp handle_request(id, manager) do
-    manager.state_module().put(id, %{manager.state_module().get(id) | busy?: DateTime.utc_now()})
+    manager.__state_module__().put(id, %{
+      manager.__state_module__().get(id)
+      | busy?: DateTime.utc_now()
+    })
+
     id
   end
 
@@ -135,8 +139,8 @@ defmodule Tarearbol.DynamicWorker do
     if reschedule, do: schedule_work(timeout)
 
     restate = fn value ->
-      manager.state_module().put(id, %{
-        manager.state_module().get(id)
+      manager.__state_module__().put(id, %{
+        manager.__state_module__().get(id)
         | value: value,
           busy?: nil
       })
@@ -144,7 +148,7 @@ defmodule Tarearbol.DynamicWorker do
 
     case response do
       :halt ->
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
+        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
         state
 
       :multihalt ->
@@ -154,7 +158,7 @@ defmodule Tarearbol.DynamicWorker do
           and return regular `:halt` instead.
         """)
 
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
+        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
         state
 
       {:replace, ^payload} ->
@@ -174,8 +178,8 @@ defmodule Tarearbol.DynamicWorker do
         %{state | payload: payload}
 
       {:replace, new_id, payload} ->
-        Tarearbol.InternalWorker.del(manager.internal_worker_module(), id)
-        Tarearbol.InternalWorker.put(manager.internal_worker_module(), new_id, payload)
+        Tarearbol.InternalWorker.del(manager.__internal_worker_module__(), id)
+        Tarearbol.InternalWorker.put(manager.__internal_worker_module__(), new_id, payload)
         %{state | id: new_id, payload: payload}
 
       {{:timeout, new_timeout}, result} ->

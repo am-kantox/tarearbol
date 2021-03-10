@@ -77,9 +77,9 @@ defmodule Tarearbol.DynamicManager.Test do
 
     Process.sleep(200)
 
-    assert PingPong1.state_module().state().children == %{}
-    assert PingPong2.state_module().state().children == %{}
-    refute PingPong3.state_module().state().children == %{}
+    assert PingPong1.state().children == %{}
+    assert PingPong2.state().children == %{}
+    refute PingPong3.state().children == %{}
 
     GenServer.stop(pid3)
     GenServer.stop(pid2)
@@ -112,11 +112,11 @@ defmodule Tarearbol.DynamicManager.Test do
     PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
     assert_receive "pong", 200
     PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
-    assert map_size(PingPong4.state_module().state().children) == 1
+    assert map_size(PingPong4.state().children) == 1
     assert_receive "pong", 200
     PingPong4.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
-    assert map_size(PingPong4.state_module().state().children) == 0
+    assert map_size(PingPong4.state().children) == 0
     GenServer.stop(pid4)
 
     Enum.each([PingPong4], fn mod ->
@@ -151,7 +151,7 @@ defmodule Tarearbol.DynamicManager.Test do
     assert_receive "pong", 500
     PingPong5.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
-    assert map_size(PingPong5.state_module().state().children) == 0
+    assert map_size(PingPong5.state().children) == 0
     GenServer.stop(pid5)
 
     Enum.each([PingPong5], fn mod ->

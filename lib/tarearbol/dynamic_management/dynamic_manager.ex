@@ -26,10 +26,9 @@ defmodule Tarearbol.DynamicManager do
 
   The above would spawn `10` children with IDs `"foo_1".."foo_10"`.
 
-  ---
+  ## Workers Management
 
-  `DynamicManager` also allows dynamic workers management. It exports three
-  functions
+  `DynamicManager` allows dynamic workers management. It exports three functions
 
       @spec put(id :: id(), opts :: Enum.t()) :: pid()
       @spec del(id :: id()) :: :ok
@@ -39,6 +38,27 @@ defmodule Tarearbol.DynamicManager do
   `del/1` and `get/1` receive the unique ID of the child and shutdown it or
   return it’s payload respectively.
 
+  ## Workers Callbacks
+
+  Workers are allowed to implement several callbacks to be used to pass messages
+    to them.
+
+  - **`peform/2`** is called periodically by the library internals; the interval
+    is set upon worker initialization via `children_specs/1` (static) or `put/2`
+    (dynamic); the interval set to `0` suppresses periodic invocations
+  - **`call/3`** to handle synchronous message send to worker
+  - **`cast/2`** to handle asynchronous message send to worker
+  - **`terminate/2`** to handle worker process termination
+
+  All the above should return a value of `t:response()` type.
+
+  Also, the implementing module might use a custom initialization function
+    to e. g. dynamically build payload. Is should be passed to `use DynamicManager`
+    as a parameter `init: handler` and might be a tuple `{module(), function(), arity()}` or
+    a captured function `&MyMod.my_init/1`. Arities 0, 1 and 2 are allowed, as described by
+    `t:init_handler()` type.
+
+  The worker process will call this function from `GenServer.handle_continue/2` callback.
   """
   @moduledoc since: "0.9.0"
 
@@ -60,6 +80,7 @@ defmodule Tarearbol.DynamicManager do
           | {:ok, any()}
           | any()
 
+  @typedoc "Post-instantion init handler type, that might be passed to `use DynamicManager` vis `init:`"
   @type init_handler ::
           nil
           | (() -> Tarearbol.DynamicManager.payload())
@@ -72,9 +93,10 @@ defmodule Tarearbol.DynamicManager do
   and a workers as the value.
 
   The value must be an enumerable with keys among:
-  - `:payload` (passed as second argument to `perform/2`, default `nil`)
-  - `:timeout` (time between iterations of `perform/2`, default `1` second)
-  - `:lull` (threshold to notify latency in performing, default `1.1` (the threshold is `:lull` times the `:timeout`))
+  - `:payload` passed as second argument to `perform/2`, default `nil`
+  - `:timeout` time between iterations of `perform/2`, default `1` second
+  - `:lull` threshold to notify latency in performing, default `1.1`
+    (the threshold is `:lull` times the `:timeout`)
 
   This function should not care about anything save for producing side effects.
 
@@ -85,10 +107,10 @@ defmodule Tarearbol.DynamicManager do
   @callback children_specs :: %{required(id()) => Enum.t()}
 
   @doc """
-  The main function, doing all the job, supervised.
+  The main function, doing all the internal job, supervised.
 
   It will be called with the child `id` as first argument and the
-  `payload` option to child spec as second argument (defaulting to nil,
+  `payload` option to child spec as second argument (defaulting to `nil`,
   can also be ignored if not needed).
 
   ### Return values
@@ -97,6 +119,7 @@ defmodule Tarearbol.DynamicManager do
 
   - `:halt` if it wants to be killed
   - `{:ok, result}` to store the last result and reschedule with default timeout
+  - `{:replace, payload}` to replace the payload (state) of the current worker with the new one
   - `{:replace, id, payload}` to replace the current worker with the new one
   - `{{:timeout, timeout}, result}` to store the last result and reschedule in given timeout interval
   - or **_deprecated_** anything else will be treated as a result
@@ -105,14 +128,14 @@ defmodule Tarearbol.DynamicManager do
   @callback perform(id :: id(), payload :: payload()) :: response()
 
   @doc """
-  The method to implement for explicit `GenServer.call/3` on the wrapping worker.
+  The method to implement to support explicit `GenServer.call/3` on the wrapping worker.
   """
   @doc since: "1.2.0"
   @callback call(message :: any(), from :: GenServer.from(), {id :: id(), payload :: payload()}) ::
               response()
 
   @doc """
-  The method to implement for explicit `GenServer.cast/2` on the wrapping worker.
+  The method to implement to support explicit `GenServer.cast/2` on the wrapping worker.
   """
   @doc since: "1.2.1"
   @callback cast(message :: any(), {id :: id(), payload :: payload()}) :: response()
@@ -166,8 +189,8 @@ defmodule Tarearbol.DynamicManager do
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
 
       @doc false
-      @spec namespace :: module()
-      def namespace, do: @namespace
+      @spec __namespace__ :: module()
+      def __namespace__, do: @namespace
 
       @init_handler (case unquote(init_handler) do
                        nil ->
@@ -191,22 +214,22 @@ defmodule Tarearbol.DynamicManager do
                      end)
 
       @doc false
-      @spec init_handler :: Tarearbol.DynamicManager.init_handler()
-      def init_handler, do: @init_handler
+      @spec __init_handler__ :: Tarearbol.DynamicManager.init_handler()
+      def __init_handler__, do: @init_handler
 
-      @spec child_mod(module :: module() | list()) :: module()
-      defp child_mod(module) when is_atom(module), do: child_mod(Module.split(module))
+      @spec __child_mod__(module :: module() | list()) :: module()
+      defp __child_mod__(module) when is_atom(module), do: __child_mod__(Module.split(module))
 
-      defp child_mod(module) when is_list(module),
+      defp __child_mod__(module) when is_list(module),
         do: Module.concat(@namespace, List.last(module))
 
       @doc false
-      @spec internal_worker_module :: module()
-      def internal_worker_module, do: child_mod(Tarearbol.InternalWorker)
+      @spec __internal_worker_module__ :: module()
+      def __internal_worker_module__, do: __child_mod__(Tarearbol.InternalWorker)
 
       @doc false
-      @spec dynamic_supervisor_module :: module()
-      def dynamic_supervisor_module, do: child_mod(Tarearbol.DynamicSupervisor)
+      @spec __dynamic_supervisor_module__ :: module()
+      def __dynamic_supervisor_module__, do: __child_mod__(Tarearbol.DynamicSupervisor)
 
       state_module_ast =
         quote generated: true, location: :keep do
@@ -288,22 +311,22 @@ defmodule Tarearbol.DynamicManager do
       Module.create(@state_module, state_module_ast, __ENV__)
 
       @doc false
-      @spec state_module :: module()
-      def state_module, do: @state_module
+      @spec __state_module__ :: module()
+      def __state_module__, do: @state_module
 
       @doc false
       @spec state :: struct()
       def state, do: @state_module.state()
 
-      @doc false
-      @spec free :: %Stream{}
-      def free, do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
-
       @registry_module Module.concat(@namespace, Registry)
 
       @doc false
-      @spec registry_module :: module()
-      def registry_module, do: @registry_module
+      @spec __registry_module__ :: module()
+      def __registry_module__, do: @registry_module
+
+      @doc false
+      @spec free :: %Stream{}
+      def free, do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
 
       require Logger
 
@@ -313,7 +336,7 @@ defmodule Tarearbol.DynamicManager do
       def perform(id, _payload) do
         Logger.warn(
           "perform for id[#{id}] was executed with state\n\n" <>
-            inspect(state_module().state()) <>
+            inspect(__state_module__().state()) <>
             "\n\nyou want to override `perform/2` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
         )
@@ -325,7 +348,7 @@ defmodule Tarearbol.DynamicManager do
       def call(_message, _from, {id, _payload}) do
         Logger.warn(
           "call for id[#{id}] was executed with state\n\n" <>
-            inspect(state_module().state()) <>
+            inspect(__state_module__().state()) <>
             "\n\nyou want to override `call/3` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
         )
@@ -337,7 +360,7 @@ defmodule Tarearbol.DynamicManager do
       def cast(_message, {id, _payload}) do
         Logger.warn(
           "cast for id[#{id}] was executed with state\n\n" <>
-            inspect(state_module().state()) <>
+            inspect(__state_module__().state()) <>
             "\n\nyou want to override `cast/2` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
         )
@@ -387,8 +410,8 @@ defmodule Tarearbol.DynamicManager do
         Logger.info(
           "Starting #{inspect(__MODULE__)} with following children:\n" <>
             "    State → #{inspect(@state_module)}\n" <>
-            "    DynamicSupervisor → #{inspect(dynamic_supervisor_module())}\n" <>
-            "    InternalWorker → #{inspect(internal_worker_module())}"
+            "    DynamicSupervisor → #{inspect(__dynamic_supervisor_module__())}\n" <>
+            "    InternalWorker → #{inspect(__internal_worker_module__())}"
         )
 
         Supervisor.init(children, strategy: :rest_for_one)
@@ -452,7 +475,7 @@ defmodule Tarearbol.DynamicManager do
         must be added to a project to use this feature.
       """
       def put(id, opts),
-        do: apply(Tarearbol.InternalWorker, @put, [internal_worker_module(), id, opts])
+        do: apply(Tarearbol.InternalWorker, @put, [__internal_worker_module__(), id, opts])
 
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
@@ -477,7 +500,7 @@ defmodule Tarearbol.DynamicManager do
         must be added to a project to use this feature.
       """
       def del(id),
-        do: apply(Tarearbol.InternalWorker, @del, [internal_worker_module(), id])
+        do: apply(Tarearbol.InternalWorker, @del, [__internal_worker_module__(), id])
 
       @doc """
       Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
@@ -496,12 +519,12 @@ defmodule Tarearbol.DynamicManager do
       Retrieves the information (`payload`, `timeout`, `lull` etc.) assotiated with
       the supervised worker
       """
-      def get(id), do: Tarearbol.InternalWorker.get(internal_worker_module(), id)
+      def get(id), do: Tarearbol.InternalWorker.get(__internal_worker_module__(), id)
 
       @doc """
       Restarts the `DynamicManager` to the clean state
       """
-      def restart, do: Tarearbol.InternalWorker.restart(internal_worker_module())
+      def restart, do: Tarearbol.InternalWorker.restart(__internal_worker_module__())
     end
   end
 
@@ -519,10 +542,14 @@ defmodule Tarearbol.DynamicManager do
   end
 
   @reserved ~w|
-    asynch_call del dynamic_supervisor_module
-    free get init init_handler internal_worker_module multidel
-    multiput namespace put registry_module restart start_link
-    start_link state state_module synch_call|a
+    start_link init state
+    get del put restart
+    asynch_call synch_call
+    multidel multiput
+    __init_handler__
+    __namespace__ __free__
+    __dynamic_supervisor_module__ __internal_worker_module__ __registry_module__ __state_module__
+  |a
   defp report_override(nil, mod, kind, name, arity) when name in @reserved,
     do:
       Logger.warn("""
