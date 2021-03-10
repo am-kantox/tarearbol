@@ -111,6 +111,7 @@ defmodule Tarearbol.Mixfile do
         "stuff/pages/intro.md",
         "stuff/pages/task_management.md",
         "stuff/pages/dynamic_workers_management.md",
+        "stuff/pages/dynamic_management_examples.md",
         "stuff/pages/cron_management.md"
       ],
       groups_for_modules: [

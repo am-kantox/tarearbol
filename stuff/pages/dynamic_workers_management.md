@@ -1,5 +1,11 @@
 # Dynamic Workers Management
 
+## Dynamic Management Examples
+
+There are some ready-to-use snippets [collected here](./dynamic_management_examples.md).
+
+## Architecture
+
 ![DynamicManager Architecture](./assets/dynamic_manager.png)
 
 `DynamicSupervisor` is a very handy tool to manage many different task-like processes.
