@@ -136,6 +136,10 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.4.0`**
+  - **`Tarearbol.Pool`** to easily create worker pools on top of `Tarearbol.DynamicManager`
+  - **`cast/2`, `call/3`, `terminate/2`** callbacks for workers to initiale message passing from outside
+  - **`init:`** argument in call to `use Tarearbol.DynamicManager` to allow custom payload initialization (routed to `handle_continue/2` of underlying process)
 - **`1.3.0`** standardized types, better docs;
 - **`1.2.1`** `cast/2` and standard replies from worker (:halt | :replace | :ok | any()};
 - **`1.2.0`** `call/3` and `terminate/2` callbacks in `DynamicManager`, `0` timeout for `perform/2`;
