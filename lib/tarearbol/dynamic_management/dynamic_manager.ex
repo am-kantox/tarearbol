@@ -182,12 +182,14 @@ defmodule Tarearbol.DynamicManager do
   @doc false
   defmacro __using__(opts) do
     {init_handler, opts} = Keyword.pop(opts, :init)
-    {distributed, opts} = Keyword.pop(opts, :distributed)
+    {distributed, opts} = Keyword.pop(opts, :distributed, false)
+    {pickup, opts} = Keyword.pop(opts, :pickup, :random)
 
     quote generated: true, location: :keep do
       @on_definition Tarearbol.DynamicManager
 
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
+      @pickup unquote(pickup)
 
       @doc false
       @spec __namespace__ :: module()
@@ -336,8 +338,24 @@ defmodule Tarearbol.DynamicManager do
       def state, do: @state_module.state()
 
       @doc false
-      @spec free :: %Stream{}
-      def free, do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
+      @spec __free_worker__(kind :: :random | :stream) :: %Stream{}
+      def __free_worker__(kind \\ :random)
+
+      def __free_worker__(:stream),
+        do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
+
+      def __free_worker__(:random) do
+        state().children
+        |> Enum.filter(&is_nil(elem(&1, 1).busy?))
+        |> case do
+          [] -> nil
+          [one] -> one
+          many -> Enum.random(many)
+        end
+        |> List.wrap()
+      end
+
+      defoverridable __free_worker__: 1
 
       require Logger
 
@@ -437,7 +455,7 @@ defmodule Tarearbol.DynamicManager do
       @spec synch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
               {:ok, any()} | :error
       def synch_call(nil, message) do
-        free()
+        __free_worker__(@pickup)
         |> Enum.take(1)
         |> case do
           [] -> :error
@@ -461,7 +479,7 @@ defmodule Tarearbol.DynamicManager do
       @spec asynch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
               :ok | :error
       def asynch_call(nil, message) do
-        free()
+        __free_worker__(@pickup)
         |> Enum.take(1)
         |> case do
           [] -> :error
@@ -558,7 +576,7 @@ defmodule Tarearbol.DynamicManager do
     asynch_call synch_call
     multidel multiput
     __init_handler__
-    __namespace__ __free__
+    __namespace__
     __dynamic_supervisor_module__ __internal_worker_module__ __registry_module__ __state_module__
   |a
   defp report_override(nil, mod, kind, name, arity) when name in @reserved,

@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.4.1`** random pool worker by default, pass `:stream`, or override `__free_worker__` if needed
 - **`1.4.0`**
   - **`Tarearbol.Pool`** to easily create worker pools on top of `Tarearbol.DynamicManager`
   - **`cast/2`, `call/3`, `terminate/2`** callbacks for workers to initiale message passing from outside

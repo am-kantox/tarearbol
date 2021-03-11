@@ -14,9 +14,15 @@ defmodule Tarearbol.DynamicManager.Pool.Test do
 
     Process.sleep(100)
 
-    assert Tarearbol.Full.synch() == {:ok, 1}
-    assert Tarearbol.Full.synch() == {:ok, 2}
-    assert Tarearbol.Full.synch(3) == {:ok, 5}
+    assert {:ok, 1} = Tarearbol.Full.synch()
+    assert {:ok, _} = Tarearbol.Full.synch()
+    assert {:ok, _} = Tarearbol.Full.synch(3)
+
+    assert 5 ==
+             Tarearbol.Full.state().children
+             |> Enum.map(&elem(&1, 1).value)
+             |> Enum.reject(&is_nil/1)
+             |> Enum.sum()
 
     assert Tarearbol.Full.asynch() == :ok
     Process.sleep(10)
@@ -29,7 +35,12 @@ defmodule Tarearbol.DynamicManager.Pool.Test do
              1..5 |> Task.async_stream(&Tarearbol.Full.asynch/1) |> Enum.to_list() |> Enum.uniq()
 
     Process.sleep(700)
-    assert [20, 2] == Enum.map(Tarearbol.Full.state().children, &elem(&1, 1).value)
+
+    assert 20 ==
+             Tarearbol.Full.state().children
+             |> Enum.map(&elem(&1, 1).value)
+             |> Enum.reject(&is_nil/1)
+             |> Enum.sum()
 
     GenServer.stop(pid)
   end
