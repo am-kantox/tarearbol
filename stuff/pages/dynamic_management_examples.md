@@ -124,11 +124,11 @@ defmodule Bucket do
     {:ok, DateTime.utc_now()}
   end
 
-  @impl Tarearbol.DynamicManager
+  @impl DynamicManager
   def call(:<, _from, {_id, payload}),
     do: {:ok, payload}
 
-  @impl Tarearbol.DynamicManager
+  @impl DynamicManager
   def cast({:+, item}, {_id, payload}),
     do: {:replace, Map.update(payload, item, 1, & &1+1)}
 end
