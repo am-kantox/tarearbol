@@ -143,7 +143,7 @@ defmodule Tarearbol.DynamicWorker do
           state
 
         :multihalt ->
-          Logger.warning("""
+          Logger.warn("""
           Returning `:multihalt` from callbacks is deprecated.
           Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
             and return regular `:halt` instead.
