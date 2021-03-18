@@ -44,7 +44,7 @@ defmodule Tarearbol.Pool do
         use Tarearbol.DynamicManager, init: unquote(init)
 
         # @before_compile Tarearbol.Pool
-        import Tarearbol.Pool, only: [defsynch: 2, defasynch: 2]
+        import Tarearbol.Pool, only: [defsynch: 1, defsynch: 2, defasynch: 1, defasynch: 2]
 
         def children_specs do
           for i <- 1..unquote(pool_size),
@@ -65,10 +65,10 @@ defmodule Tarearbol.Pool do
 
   @spec params(:call | :cast, {atom(), keyword(), [ast]}) :: ast when ast: Macro.t()
   defp params(:call, {fun, meta, params}),
-    do: [{:{}, meta, [fun | params]}, {:_from, [], Elixir}, {:κ, [], Elixir}]
+    do: [{:{}, meta, [fun | check_no_defaults(params)]}, {:_from, [], Elixir}, {:κ, [], Elixir}]
 
   defp params(:cast, {fun, meta, params}),
-    do: [{:{}, meta, [fun | params]}, {:κ, [], Elixir}]
+    do: [{:{}, meta, [fun | check_no_defaults(params)]}, {:κ, [], Elixir}]
 
   # defp call_reply(opts) do
   #   case Keyword.pop(opts, :do) do
@@ -92,7 +92,7 @@ defmodule Tarearbol.Pool do
 
   This function might return any response recognizable by `t:Tarearbol.DynamicManager.response/0`.
   """
-  defmacro defsynch(definition, opts),
+  defmacro defsynch(definition, opts \\ []),
     do: do_def(:call, definition, opts)
 
   @doc since: "1.4.0"
@@ -103,8 +103,12 @@ defmodule Tarearbol.Pool do
 
   This function might return any response recognizable by `t:Tarearbol.DynamicManager.response/0`.
   """
-  defmacro defasynch(definition, opts),
+  defmacro defasynch(definition, opts \\ []),
     do: do_def(:cast, definition, opts)
+
+  defp do_def(_synch, fun, []) do
+    {:def, [], [fun]}
+  end
 
   @interface %{cast: :asynch_call, call: :synch_call}
   defp do_def(synch, definition, opts) do
@@ -135,6 +139,18 @@ defmodule Tarearbol.Pool do
       {:id!, meta, []} -> {:elem, [context: Elixir, import: Kernel], [{:κ, meta, Elixir}, 0]}
       {:payload!, meta, []} -> {:elem, [context: Elixir, import: Kernel], [{:κ, meta, Elixir}, 1]}
       other -> other
+    end)
+  end
+
+  defp check_no_defaults(params) when is_list(params) do
+    Macro.prewalk(params, fn
+      {:\\, _, _} ->
+        raise ArgumentError, """
+        Default values in non-head declaration are not allowed yet. Declare a function head with default values instead.
+        """
+
+      other ->
+        other
     end)
   end
 

@@ -4,9 +4,7 @@ defmodule Tarearbol.Full do
 
   def continue, do: 0
 
-  defsynch synch do
-    {:replace, payload!() + 1}
-  end
+  defsynch synch(n \\ 1)
 
   defsynch synch(n) do
     {:replace, payload!() + n}

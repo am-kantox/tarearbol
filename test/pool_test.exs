@@ -44,4 +44,16 @@ defmodule Tarearbol.DynamicManager.Pool.Test do
 
     GenServer.stop(pid)
   end
+
+  test "Raises on an attempt to declare default params" do
+    ast =
+      quote do
+        use Tarearbol.Pool
+        defsynch synch_ok(n \\ 1), do: {:ok, n}
+      end
+
+    assert_raise ArgumentError, fn ->
+      Module.create(NotSupportedDefaultValues, ast, Macro.Env.location(__ENV__))
+    end
+  end
 end
