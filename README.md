@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.4.3`** accept function heads with `defsynch/1` and `defasynch/1`
 - **`1.4.1`** random pool worker by default, pass `:stream`, or override `__free_worker__` if needed
 - **`1.4.0`**
   - **`Tarearbol.Pool`** to easily create worker pools on top of `Tarearbol.DynamicManager`
