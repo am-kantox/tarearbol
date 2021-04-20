@@ -179,8 +179,17 @@ defmodule Tarearbol.DynamicManager do
     defstruct [:pid, :value, :opts, :busy?]
   end
 
+  @defaults %{
+    timeout: 1_000,
+    lull: 1.1,
+    payload: nil
+  }
+
   @doc false
   defmacro __using__(opts) do
+    {defaults, opts} = Keyword.pop(opts, :defaults, [])
+    defaults = @defaults |> Map.merge(Map.new(defaults)) |> Macro.escape()
+
     {init_handler, opts} = Keyword.pop(opts, :init)
     {distributed, opts} = Keyword.pop(opts, :distributed, false)
     {pickup, opts} = Keyword.pop(opts, :pickup, :random)
@@ -190,6 +199,14 @@ defmodule Tarearbol.DynamicManager do
 
       @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
       @pickup unquote(pickup)
+
+      @doc false
+      @spec __defaults__ :: %{
+              timeout: non_neg_integer(),
+              lull: float(),
+              payload: term()
+            }
+      def __defaults__, do: unquote(defaults)
 
       @doc false
       @spec __namespace__ :: module()

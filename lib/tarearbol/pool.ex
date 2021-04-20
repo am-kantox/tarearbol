@@ -41,7 +41,7 @@ defmodule Tarearbol.Pool do
 
     ast =
       quote generated: true, location: :keep do
-        use Tarearbol.DynamicManager, init: unquote(init)
+        use Tarearbol.DynamicManager, init: unquote(init), defaults: [timeout: unquote(timeout)]
 
         # @before_compile Tarearbol.Pool
         import Tarearbol.Pool, only: [defsynch: 1, defsynch: 2, defasynch: 1, defasynch: 2]
@@ -49,7 +49,7 @@ defmodule Tarearbol.Pool do
         def children_specs do
           for i <- 1..unquote(pool_size),
               into: %{},
-              do: {i, payload: unquote(payload), timeout: unquote(timeout)}
+              do: {i, payload: unquote(payload)}
         end
 
         defoverridable children_specs: 0

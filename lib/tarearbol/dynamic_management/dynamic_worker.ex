@@ -14,12 +14,6 @@ defmodule Tarearbol.DynamicWorker do
           timeout: integer()
         }
 
-  @default_opts %{
-    timeout: 1_000,
-    lull: 1.1,
-    payload: nil
-  }
-
   @spec start_link([
           {:manager, atom()}
           | {:id, Tarearbol.DynamicManager.id()}
@@ -28,7 +22,7 @@ defmodule Tarearbol.DynamicWorker do
           | {:lull, float()}
         ]) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(opts) do
-    opts = Map.merge(@default_opts, Map.new(opts))
+    opts = Map.merge(opts.manager.__defaults__(), Map.new(opts))
 
     {name, opts} =
       Map.pop(
