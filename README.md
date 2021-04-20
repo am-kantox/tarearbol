@@ -135,7 +135,7 @@ Tarearbol.drain
 ### [Dynamic Workers Management](https://hexdocs.pm/tarearbol/dynamic_workers_management.html)
 
 ### Changelog
-
+- **`1.5.0`** defaults for `payload`, `timeout` and `lull` accepted in `use DynamicManager` options as `defaults: …`
 - **`1.4.4`** `DynamicManager` accepts `{:payload, payload}` message to update a payload
 - **`1.4.3`** accept function heads with `defsynch/1` and `defasynch/1`
 - **`1.4.1`** random pool worker by default, pass `:stream`, or override `__free_worker__` if needed
