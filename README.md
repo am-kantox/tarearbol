@@ -135,6 +135,8 @@ Tarearbol.drain
 ### [Dynamic Workers Management](https://hexdocs.pm/tarearbol/dynamic_workers_management.html)
 
 ### Changelog
+
+- **`1.6.0`** `HashRing` default for `synch`/`asynch` calls in `Tarearbol.DynamicWorker` selection (to preserve idempotency amongst calls)
 - **`1.5.0`** defaults for `payload`, `timeout` and `lull` accepted in `use DynamicManager` options as `defaults: …`
 - **`1.4.4`** `DynamicManager` accepts `{:payload, payload}` message to update a payload
 - **`1.4.3`** accept function heads with `defsynch/1` and `defasynch/1`
