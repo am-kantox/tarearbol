@@ -14,13 +14,14 @@ defmodule Tarearbol.DynamicWorker do
           timeout: integer()
         }
 
-  @spec start_link([
-          {:manager, atom()}
-          | {:id, Tarearbol.DynamicManager.id()}
-          | {:payload, Tarearbol.DynamicManager.payload()}
-          | {:timeout, non_neg_integer()}
-          | {:lull, float()}
-        ]) :: :ignore | {:error, any()} | {:ok, pid()}
+  @spec start_link(%{
+          manager: atom(),
+          id: Tarearbol.DynamicManager.id(),
+          name: any(),
+          payload: Tarearbol.DynamicManager.payload(),
+          timeout: non_neg_integer(),
+          lull: float()
+        }) :: GenServer.on_start()
   def start_link(opts) do
     opts = Map.merge(opts.manager.__defaults__(), Map.new(opts))
 

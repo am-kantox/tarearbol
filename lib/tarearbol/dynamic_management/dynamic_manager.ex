@@ -192,7 +192,7 @@ defmodule Tarearbol.DynamicManager do
 
     {init_handler, opts} = Keyword.pop(opts, :init)
     {distributed, opts} = Keyword.pop(opts, :distributed, false)
-    {pickup, opts} = Keyword.pop(opts, :pickup, :random)
+    {pickup, opts} = Keyword.pop(opts, :pickup, :hashring)
 
     quote generated: true, location: :keep do
       @on_definition Tarearbol.DynamicManager
@@ -262,10 +262,11 @@ defmodule Tarearbol.DynamicManager do
                   __struct__: __MODULE__,
                   state: :down | :up | :starting | :unknown,
                   children: %{optional(DynamicManager.id()) => DynamicManager.Child.t()},
-                  manager: module()
+                  manager: module(),
+                  ring: HashRing.t()
                 }
 
-          defstruct state: :down, children: %{}, manager: nil
+          defstruct [:manager, :ring, state: :down, children: %{}]
 
           @spec start_link([{:manager, atom()}]) :: GenServer.on_start()
           def start_link(manager: manager),
@@ -295,7 +296,12 @@ defmodule Tarearbol.DynamicManager do
 
           @impl GenServer
           def init(opts) do
-            state = struct(__MODULE__, Keyword.put(opts, :state, :starting))
+            opts =
+              opts
+              |> Keyword.put(:state, :starting)
+              |> Keyword.put_new(:ring, HashRing.new())
+
+            state = struct!(__MODULE__, opts)
 
             state.manager.handle_state_change(:starting)
             {:ok, state}
@@ -316,9 +322,15 @@ defmodule Tarearbol.DynamicManager do
           @impl GenServer
           def handle_cast(
                 {:put, id, %DynamicManager.Child{} = props},
-                %__MODULE__{children: children} = state
+                %__MODULE__{ring: ring, children: children} = state
               ),
-              do: {:noreply, %{state | children: Map.put(children, id, props)}}
+              do:
+                {:noreply,
+                 %{
+                   state
+                   | ring: ring && HashRing.add_node(ring, id),
+                     children: Map.put(children, id, props)
+                 }}
 
           @impl GenServer
           def handle_cast({:put, id, props}, %__MODULE__{} = state),
@@ -329,8 +341,14 @@ defmodule Tarearbol.DynamicManager do
             do: {:noreply, %{state | children: Map.update!(children, id, fun)}}
 
           @impl GenServer
-          def handle_cast({:del, id}, %__MODULE__{children: children} = state),
-            do: {:noreply, %{state | children: Map.delete(children, id)}}
+          def handle_cast({:del, id}, %__MODULE__{ring: ring, children: children} = state),
+            do:
+              {:noreply,
+               %{
+                 state
+                 | ring: ring && HashRing.remove_node(ring, id),
+                   children: Map.delete(children, id)
+               }}
 
           @impl GenServer
           def handle_cast({:update_state, new_state}, %__MODULE__{} = state),
@@ -355,13 +373,14 @@ defmodule Tarearbol.DynamicManager do
       def state, do: @state_module.state()
 
       @doc false
-      @spec __free_worker__(kind :: :random | :stream) :: %Stream{}
-      def __free_worker__(kind \\ :random)
+      @spec __free_worker__(kind :: :random | :stream | :hashring, tuple()) ::
+              {:id, Tarearbol.DynamicManager.id()} | list()
+      def __free_worker__(kind \\ @pickup, tuple)
 
-      def __free_worker__(:stream),
-        do: Stream.filter(state().children, &is_nil(elem(&1, 1).busy?))
+      def __free_worker__(:stream, _tuple),
+        do: state().children |> Stream.filter(&is_nil(elem(&1, 1).busy?)) |> Enum.take(1)
 
-      def __free_worker__(:random) do
+      def __free_worker__(:random, _tuple) do
         state().children
         |> Enum.filter(&is_nil(elem(&1, 1).busy?))
         |> case do
@@ -372,7 +391,8 @@ defmodule Tarearbol.DynamicManager do
         |> List.wrap()
       end
 
-      defoverridable __free_worker__: 1
+      def __free_worker__(:hashring, tuple),
+        do: {:id, HashRing.key_to_node(state().ring, tuple)}
 
       require Logger
 
@@ -471,21 +491,8 @@ defmodule Tarearbol.DynamicManager do
       @doc since: "1.2.0"
       @spec synch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
               {:ok, any()} | :error
-      def synch_call(nil, message) do
-        __free_worker__(@pickup)
-        |> Enum.take(1)
-        |> case do
-          [] -> :error
-          [{_id, %Child{pid: pid}}] -> {:ok, GenServer.call(pid, message)}
-        end
-      end
-
-      def synch_call(id, message) do
-        case Registry.lookup(@registry_module, id) do
-          [{pid, nil}] -> {:ok, GenServer.call(pid, message)}
-          [] -> :error
-        end
-      end
+      def synch_call(id, message),
+        do: do_ynch_call(:call, id, message)
 
       @doc """
       Performs a `GenServer.cast/2` to the worker specified by `id`.
@@ -495,21 +502,37 @@ defmodule Tarearbol.DynamicManager do
       @doc since: "1.2.1"
       @spec asynch_call(id :: nil | Tarearbol.DynamicManager.id(), message :: any()) ::
               :ok | :error
-      def asynch_call(nil, message) do
-        __free_worker__(@pickup)
-        |> Enum.take(1)
+      def asynch_call(id, message),
+        do: do_ynch_call(:cast, id, message)
+
+      @spec do_ynch_call(:call | :cast, nil | any(), term()) :: :error | :ok | {:ok, term()}
+      defp do_ynch_call(type, nil, message) do
+        @pickup
+        |> __free_worker__(message |> Tuple.to_list() |> Enum.take(2) |> List.to_tuple())
         |> case do
-          [] -> :error
-          [{_id, %Child{pid: pid}}] -> GenServer.cast(pid, message)
+          {:id, worker_id} ->
+            do_ynch_call(type, worker_id, message)
+
+          [] ->
+            :error
+
+          [{_id, %Child{pid: pid}} | _] ->
+            GenServer
+            |> apply(type, [pid, message])
+            |> do_wrap_result(type)
         end
       end
 
-      def asynch_call(id, message) do
+      defp do_ynch_call(type, id, message) do
         case Registry.lookup(@registry_module, id) do
-          [{pid, nil}] -> GenServer.cast(pid, message)
+          [{pid, nil}] -> GenServer |> apply(type, [pid, message]) |> do_wrap_result(type)
           [] -> :error
         end
       end
+
+      @spec do_wrap_result(result, :call | :cast) :: {:ok, result} | :ok when result: any()
+      defp do_wrap_result(result, :call), do: {:ok, result}
+      defp do_wrap_result(result, :cast), do: result
 
       @put if unquote(distributed), do: :multiput, else: :put
       @doc """

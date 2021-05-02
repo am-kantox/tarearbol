@@ -49,8 +49,10 @@ defmodule Tarearbol.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:formulae, "~> 0.5"},
       {:boundary, "~> 0.4"},
+      {:libring, "~> 1.4"},
+      # kantox
+      {:formulae, "~> 0.5"},
       {:telemetria, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
