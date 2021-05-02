@@ -31,6 +31,7 @@ defmodule Tarearbol.Pool do
   defmacro __using__(opts) do
     pool_size = Utils.get_opt(opts, :pool_size, 5)
     timeout = Utils.get_opt(opts, :pool_timeout, 0)
+    pickup = Utils.get_opt(opts, :pickup, :hashring)
 
     payload =
       opts
@@ -40,8 +41,11 @@ defmodule Tarearbol.Pool do
     init = Keyword.get(opts, :init)
 
     ast =
-      quote generated: true, location: :keep do
-        use Tarearbol.DynamicManager, init: unquote(init), defaults: [timeout: unquote(timeout)]
+      quote location: :keep, generated: true do
+        use Tarearbol.DynamicManager,
+          init: unquote(init),
+          pickup: unquote(pickup),
+          defaults: [timeout: unquote(timeout)]
 
         # @before_compile Tarearbol.Pool
         import Tarearbol.Pool, only: [defsynch: 1, defsynch: 2, defasynch: 1, defasynch: 2]
@@ -135,10 +139,22 @@ defmodule Tarearbol.Pool do
         ]
     end
     |> Macro.prewalk(fn
-      {:state!, meta, []} -> {:κ, meta, Elixir}
-      {:id!, meta, []} -> {:elem, [context: Elixir, import: Kernel], [{:κ, meta, Elixir}, 0]}
-      {:payload!, meta, []} -> {:elem, [context: Elixir, import: Kernel], [{:κ, meta, Elixir}, 1]}
-      other -> other
+      {:state!, meta, []} ->
+        {:κ, Keyword.put_new(meta, :generated, true), Elixir}
+
+      {:id!, meta, []} ->
+        {:elem, [generated: true, context: Elixir, import: Kernel],
+         [{:κ, Keyword.put_new(meta, :generated, true), Elixir}, 0]}
+
+      {:payload!, meta, []} ->
+        {:elem, [generated: true, context: Elixir, import: Kernel],
+         [{:κ, Keyword.put_new(meta, :generated, true), Elixir}, 1]}
+
+      {term, meta, params} ->
+        {term, Keyword.put_new(meta, :generated, true), params}
+
+      other ->
+        other
     end)
   end
 
