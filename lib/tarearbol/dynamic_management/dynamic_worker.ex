@@ -53,8 +53,11 @@ defmodule Tarearbol.DynamicWorker do
   end
 
   @impl GenServer
-  def terminate(reason, %{manager: manager, id: id, payload: payload}),
-    do: manager.terminate(reason, {id, payload})
+  def terminate(reason, %{manager: manager, id: id, payload: payload}) do
+    result = manager.terminate(reason, {id, payload})
+    manager.__state_module__().del(id)
+    result
+  end
 
   @impl GenServer
   def handle_info({:EXIT, _pid, reason}, state) do

@@ -622,9 +622,7 @@ defmodule Tarearbol.DynamicManager do
   defp report_override(nil, mod, kind, name, arity) when name in @reserved,
     do:
       Logger.warn("""
-      You are trying to override the reserved function in `#{kind} #{
-        inspect(Function.capture(mod, name, arity))
-      }`.
+      You are trying to override the reserved function in `#{kind} #{inspect(Function.capture(mod, name, arity))}`.
       Please consider choosing another name.
       """)
 
