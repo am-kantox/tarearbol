@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - pair:
-              otp: 23.2.5
+              otp: 24.0
               elixir: 1.12.3
     steps:
       - uses: actions/checkout@v2
