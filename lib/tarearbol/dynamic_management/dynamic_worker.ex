@@ -66,6 +66,9 @@ defmodule Tarearbol.DynamicWorker do
   end
 
   @impl GenServer
+  def handle_info({ref, _}, state) when is_reference(ref), do: {:noreply, state}
+
+  @impl GenServer
   def handle_info({:payload, payload}, state),
     do: {:noreply, %{state | payload: payload}, {:continue, :init}}
 
