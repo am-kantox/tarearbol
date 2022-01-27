@@ -16,6 +16,7 @@ defmodule Tarearbol.Scheduler.Test do
     assert_receive "pong-1", 200
   end
 
+  @tag timeout: :infinity
   test "push/3 → crontab" do
     defmodule Pong2 do
       @moduledoc false

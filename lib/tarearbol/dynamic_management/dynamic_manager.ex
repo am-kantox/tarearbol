@@ -179,16 +179,12 @@ defmodule Tarearbol.DynamicManager do
     defstruct [:pid, :value, :opts, :busy?]
   end
 
-  @defaults %{
-    timeout: 1_000,
-    lull: 1.1,
-    payload: nil
-  }
+  @defaults [timeout: 1_000, lull: 1.1, payload: nil]
 
   @doc false
   defmacro __using__(opts) do
     {defaults, opts} = Keyword.pop(opts, :defaults, [])
-    defaults = @defaults |> Map.merge(Map.new(defaults)) |> Macro.escape()
+    defaults = Keyword.merge(@defaults, defaults)
 
     {init_handler, opts} = Keyword.pop(opts, :init)
     {distributed, opts} = Keyword.pop(opts, :distributed, false)
@@ -197,8 +193,9 @@ defmodule Tarearbol.DynamicManager do
     quote generated: true, location: :keep do
       @on_definition Tarearbol.DynamicManager
 
-      @namespace Keyword.get(unquote(opts), :namespace, __MODULE__)
-      @pickup unquote(pickup)
+      @__namespace__ Keyword.get(unquote(opts), :namespace, __MODULE__)
+      @__pickup__ unquote(pickup)
+      @__defaults__ for {k, v} <- unquote(defaults), do: {k, Macro.expand(v, __MODULE__)}
 
       @doc false
       @spec __defaults__ :: %{
@@ -206,11 +203,11 @@ defmodule Tarearbol.DynamicManager do
               lull: float(),
               payload: term()
             }
-      def __defaults__, do: unquote(defaults)
+      def __defaults__, do: Map.new(@__defaults__)
 
       @doc false
       @spec __namespace__ :: module()
-      def __namespace__, do: @namespace
+      def __namespace__, do: @__namespace__
 
       @init_handler (case unquote(init_handler) do
                        nil ->
@@ -237,7 +234,7 @@ defmodule Tarearbol.DynamicManager do
       defp __child_mod__(module) when is_atom(module), do: __child_mod__(Module.split(module))
 
       defp __child_mod__(module) when is_list(module),
-        do: Module.concat(@namespace, List.last(module))
+        do: Module.concat(@__namespace__, List.last(module))
 
       @doc false
       @spec __init_handler__ :: Tarearbol.DynamicManager.init_handler()
@@ -355,14 +352,14 @@ defmodule Tarearbol.DynamicManager do
             do: {:noreply, %{state | state: new_state}}
         end
 
-      @state_module Module.concat(@namespace, State)
+      @state_module Module.concat(@__namespace__, State)
       Module.create(@state_module, state_module_ast, __ENV__)
 
       @doc false
       @spec __state_module__ :: module()
       def __state_module__, do: @state_module
 
-      @registry_module Module.concat(@namespace, Registry)
+      @registry_module Module.concat(@__namespace__, Registry)
 
       @doc false
       @spec __registry_module__ :: module()
@@ -375,7 +372,7 @@ defmodule Tarearbol.DynamicManager do
       @doc false
       @spec __free_worker__(kind :: :random | :stream | :hashring, tuple()) ::
               {:id, Tarearbol.DynamicManager.id()} | list()
-      def __free_worker__(kind \\ @pickup, tuple)
+      def __free_worker__(kind \\ @__pickup__, tuple)
 
       def __free_worker__(:stream, _tuple),
         do: state().children |> Stream.filter(&is_nil(elem(&1, 1).busy?)) |> Enum.take(1)
@@ -507,7 +504,7 @@ defmodule Tarearbol.DynamicManager do
 
       @spec do_ynch_call(:call | :cast, nil | any(), term()) :: :error | :ok | {:ok, term()}
       defp do_ynch_call(type, nil, message) do
-        @pickup
+        @__pickup__
         |> __free_worker__(message |> Tuple.to_list() |> Enum.take(2) |> List.to_tuple())
         |> case do
           {:id, worker_id} ->

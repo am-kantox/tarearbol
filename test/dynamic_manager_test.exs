@@ -11,7 +11,10 @@ defmodule Tarearbol.DynamicManager.Test do
 
   test "receives pong" do
     defmodule PingPong1 do
-      use Tarearbol.DynamicManager
+      @default_timeout Application.compile_env(:tarearbol, :dynamic_timeout, 100)
+
+      use Tarearbol.DynamicManager, defaults: [timeout: @default_timeout]
+
       @pid :erlang.term_to_binary(self())
 
       @impl Tarearbol.DynamicManager
