@@ -38,10 +38,10 @@ defmodule Tarearbol.Errand do
     )
   end
 
-  @deprecated "Use external function or `{m, f}` tuple as the job instead"
+  @deprecated "Use external function or `{m, f}` or `{m, f, a}` tuple as the job instead"
   defp do_run_in(:local, job, interval, opts) do
-    Logger.warn(
-      "[DEPRECATED] spawning local functions is deprecated; use external function or `{m, f}` tuple as the job instead"
+    Logger.debug(
+      "[DEPRECATED] spawning local functions is deprecated; use external function or `{m, f}` or `{m, f, a}` tuple as the job instead"
     )
 
     Tarearbol.Application.task!(fn ->
@@ -64,7 +64,7 @@ defmodule Tarearbol.Errand do
   Runs the task either once at the specified `%DateTime{}` or repeatedly
     at the specified `%Time{}`.
   """
-  @spec run_at(Tarearbol.Job.job(), %DateTime{}, keyword()) :: :ok | Task.t()
+  @spec run_at(Tarearbol.Job.job(), DateTime.t(), keyword()) :: :ok | Task.t()
   def run_at(job, at, opts \\ opts())
 
   def run_at(job, %DateTime{} = at, opts) do

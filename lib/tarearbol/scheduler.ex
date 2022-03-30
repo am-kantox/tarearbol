@@ -104,6 +104,19 @@ defmodule Tarearbol.Scheduler do
 
       run_ast =
         case {once?, runner} do
+          {true, {m, f, a}} ->
+            quote do
+              def run do
+                apply(unquote(m), unquote(f), unquote(a))
+                :halt
+              end
+            end
+
+          {false, {m, f, a}} ->
+            quote do
+              def run, do: {:ok, apply(unquote(m), unquote(f), unquote(a))}
+            end
+
           {true, {m, f}} ->
             quote do
               def run do
@@ -187,7 +200,7 @@ defmodule Tarearbol.Scheduler do
     end
   end
 
-  @spec active_jobs :: %{Tarearbol.DynamicManager.id() => %Tarearbol.DynamicManager.Child{}}
+  @spec active_jobs :: %{Tarearbol.DynamicManager.id() => Tarearbol.DynamicManager.Child.t()}
   def active_jobs, do: state().children
 
   @doc """

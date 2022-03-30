@@ -9,8 +9,7 @@ defmodule Tarearbol.Jobs do
 
   alias Tarearbol.Utils
 
-  @spec ensure_all_streamed([Tarearbol.Job.job()], keyword()) ::
-          %Stream{:done => nil, :funs => nonempty_maybe_improper_list()}
+  @spec ensure_all_streamed([Tarearbol.Job.job()], keyword()) :: Enumerable.t()
   def ensure_all_streamed(list, opts \\ []) do
     {stream_opts, task_opts} = Utils.extract_opts(opts, ~w|max_concurrency ordered on_timeout|a)
     stream_opts = Keyword.merge(stream_opts, timeout: task_opts[:timeout])

@@ -57,10 +57,8 @@ defmodule Tarearbol do
     do: Tarearbol.Errand.run_in(job, :none, Keyword.merge(opts, sidekiq: true, on_retry: :warn))
 
   @doc "Wrapper for [`Task.Supervisor.async_stream/4`](https://hexdocs.pm/elixir/Task.Supervisor.html#async_stream/4)."
-  @spec ensure_all_streamed([(() -> any()) | {atom(), atom(), list()}], keyword()) :: %Stream{
-          :done => nil,
-          :funs => nonempty_maybe_improper_list()
-        }
+  @spec ensure_all_streamed([(() -> any()) | {atom(), atom(), list()}], keyword()) ::
+          Enumerable.t()
   def ensure_all_streamed(jobs, opts \\ []),
     do: Tarearbol.Jobs.ensure_all_streamed(jobs, opts)
 
