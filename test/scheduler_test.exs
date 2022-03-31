@@ -8,7 +8,7 @@ defmodule Tarearbol.Scheduler.Test do
     defmodule Pong1 do
       @moduledoc false
       @pid :erlang.term_to_binary(self())
-      def run, do: send(:erlang.binary_to_term(@pid), "pong-1")
+      def run, do: {:ok, send(:erlang.binary_to_term(@pid), "pong-1")}
     end
 
     job = Tarearbol.Scheduler.Job.create(PongJob1, &Pong1.run/0, "* * * * *")

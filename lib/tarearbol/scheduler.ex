@@ -51,6 +51,7 @@ defmodule Tarearbol.Scheduler do
     ],
     exports: [State]
 
+  require Logger
   use Tarearbol.DynamicManager
 
   @typedoc """
@@ -58,13 +59,20 @@ defmodule Tarearbol.Scheduler do
   returning one of the outcomes below
   """
   @type runner ::
-          {atom(), atom()} | (() -> :halt | {:ok | {:reschedule, binary()}, any()})
+          {atom(), atom()}
+          | {atom(), atom(), list()}
+          | (() -> :halt | {:ok | {:reschedule, binary()}, any()})
 
   @typedoc """
-  Type of possible job schedules: binary cron format, `Time` to be executed once
-  `DateTime` for the daily execution
+  Type of possible job schedules to be run repeatedly: binary cron format
+  or `DateTime` for the daily execution
   """
-  @type schedule :: binary() | non_neg_integer() | DateTime.t() | Time.t()
+  @type repeated_schedule :: binary() | DateTime.t()
+  @typedoc """
+  Type of possible job schedules to be run once: `Time` to be executed once or
+  amount of milliseconds to execute after
+  """
+  @type once_schedule :: non_neg_integer() | Time.t()
 
   defmodule Job do
     @moduledoc """
@@ -72,101 +80,46 @@ defmodule Tarearbol.Scheduler do
     to preserve a list of scheduled jobs.
     """
 
+    alias Tarearbol.Scheduler
+
     @typedoc "The struct containing the information about the job"
-    @type t :: %Job{}
+    @type t :: %{
+            __struct__: Job,
+            name: binary(),
+            runner: Scheduler.runner(),
+            schedule: Scheduler.repeated_schedule(),
+            once?: boolean()
+          }
 
-    defstruct [:name, :module, :runner, :schedule]
+    defstruct [:name, :runner, :schedule, :once?]
 
-    @doc "The implementation to be run on schedule"
-    @callback run :: Tarearbol.Scheduler.runner()
+    @spec normalize_schedule(Scheduler.schedule()) :: {boolean(), DateTime.t() | binary()}
+    defp normalize_schedule(schedule) do
+      case schedule do
+        msecs when is_integer(msecs) ->
+          DateTime.add(DateTime.utc_now(), schedule, :millisecond)
+
+        %Time{} ->
+          Tarearbol.Crontab.to_cron(schedule)
+
+        %DateTime{} = hour_x ->
+          hour_x
+
+        crontab when is_binary(crontab) ->
+          crontab
+      end
+    end
 
     @doc "Produces a `Tarearbol.Scheduler.Job` by parameters given"
     @spec create(
             name :: binary(),
-            runner :: Tarearbol.Scheduler.runner(),
-            schedule :: Tarearbol.Scheduler.schedule()
+            runner :: Scheduler.runner(),
+            schedule :: Scheduler.schedule()
           ) :: t()
     def create(name, runner, schedule) do
-      {once?, schedule} =
-        case schedule do
-          msecs when is_integer(msecs) ->
-            {true, Macro.escape(DateTime.add(DateTime.utc_now(), schedule, :millisecond))}
-
-          %Time{} ->
-            {false, Tarearbol.Crontab.to_cron(schedule)}
-
-          %DateTime{} = hour_x ->
-            {true, Macro.escape(hour_x)}
-
-          crontab when is_binary(crontab) ->
-            {false, crontab}
-        end
-
-      run_ast =
-        case {once?, runner} do
-          {true, {m, f, a}} ->
-            quote do
-              def run do
-                apply(unquote(m), unquote(f), unquote(a))
-                :halt
-              end
-            end
-
-          {false, {m, f, a}} ->
-            quote do
-              def run, do: {:ok, apply(unquote(m), unquote(f), unquote(a))}
-            end
-
-          {true, {m, f}} ->
-            quote do
-              def run do
-                apply(unquote(m), unquote(f), [])
-                :halt
-              end
-            end
-
-          {false, {m, f}} ->
-            quote do
-              def run, do: {:ok, apply(unquote(m), unquote(f), [])}
-            end
-
-          {true, f} when is_function(f, 0) ->
-            f = Macro.escape(f)
-
-            quote do
-              def run do
-                unquote(f).()
-                :halt
-              end
-            end
-
-          {false, f} when is_function(f, 0) ->
-            f = Macro.escape(f)
-
-            quote do
-              def run, do: {:ok, unquote(f).()}
-            end
-        end
-
-      ast = [
-        quote do
-          @behaviour Job
-
-          @job struct(Job,
-                 name: unquote(name),
-                 module: __MODULE__,
-                 runner: &__MODULE__.run/0,
-                 schedule: unquote(schedule)
-               )
-
-          def job, do: @job
-        end,
-        run_ast
-      ]
-
-      with {:module, module, _, _} <-
-             Module.create(Module.concat(Tarearbol.Scheduler.Job, name), ast, __ENV__),
-           do: module.job()
+      schedule = normalize_schedule(schedule)
+      once? = match?(%DateTime{}, schedule)
+      struct(Job, name: name, runner: runner, schedule: schedule, once?: once?)
     end
   end
 
@@ -185,18 +138,34 @@ defmodule Tarearbol.Scheduler do
   @spec do_perform(id :: Tarearbol.DynamicManager.id(), payload :: map()) :: any()
   if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
 
-  defp do_perform(id, payload) do
+  defp do_perform(id, %{job: %Job{}} = payload) do
     job = payload.job
 
-    case job.runner.() do
-      :halt ->
+    result =
+      case job.runner do
+        {m, f, a} -> apply(m, f, a)
+        {m, f} -> apply(m, f, [])
+        f when is_function(f, 0) -> f.()
+      end
+
+    Logger.info("[⌚] Job ##{job.name} has been performed: #{inspect(result)}")
+
+    case {job.once?, result} do
+      {true, _} ->
         :halt
 
-      {:ok, result} ->
+      {_, {:ok, result}} ->
         {{:timeout, timeout(job.schedule)}, result}
 
-      {{:reschedule, schedule}, _result} ->
+      {_, {{:reschedule, schedule}, _result}} ->
         {:replace, id, %{payload | job: %Job{job | schedule: schedule}}}
+
+      {_, result} ->
+        Logger.warn(
+          "[⌚] Unexpected return from the job: #{inspect(result)}, must be :halt, or {:ok, _}, or {{:reschedule, _}, _}"
+        )
+
+        {{:timeout, timeout(job.schedule)}, result}
     end
   end
 
@@ -208,7 +177,11 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that survives restarts use `push!/3`.
   """
-  @spec push(name :: binary(), runner :: runner(), schedule :: schedule()) :: :ok
+  @spec push(
+          name :: binary(),
+          runner :: runner(),
+          schedule :: repeated_schedule() | once_schedule()
+        ) :: :ok
   def push(name, runner, schedule) do
     {name, opts} = job!(name, runner, schedule)
     Tarearbol.Scheduler.put(name, opts)
@@ -220,7 +193,11 @@ defmodule Tarearbol.Scheduler do
 
   For the implementation that temporarily pushes a job, use `push/3`.
   """
-  @spec push!(name :: binary(), runner :: runner(), schedule :: schedule()) :: :ok
+  @spec push!(
+          name :: binary(),
+          runner :: runner(),
+          schedule :: repeated_schedule() | once_schedule()
+        ) :: :ok
   def push!(name, runner, schedule) do
     File.write!(config_file(), Macro.to_string([{name, runner, schedule} | jobs()]))
     push(name, runner, schedule)
@@ -249,32 +226,21 @@ defmodule Tarearbol.Scheduler do
     pop(name)
   end
 
-  @spec job!(name :: any(), runner :: runner(), schedule :: schedule()) :: {binary(), map()}
+  @spec job!(name :: any(), runner :: runner(), schedule :: repeated_schedule() | once_schedule()) ::
+          {binary(), map()}
   defp job!(name, runner, schedule) do
     job = Job.create(name, runner, schedule)
 
     {inspect(name), %{payload: %{job: job}, timeout: timeout(job.schedule)}}
   end
 
-  @spec timeout(schedule :: schedule()) :: non_neg_integer()
-  defp timeout(schedule) when is_integer(schedule) and schedule > 0, do: schedule
-
+  @spec timeout(schedule :: repeated_schedule()) :: non_neg_integer()
   defp timeout(schedule) when is_binary(schedule),
     do:
       Tarearbol.Crontab.next(DateTime.utc_now(), schedule, precision: :millisecond)[:millisecond]
 
   defp timeout(%DateTime{} = schedule),
     do: Enum.max([0, DateTime.diff(schedule, DateTime.utc_now(), :millisecond)])
-
-  defp timeout(%Time{} = schedule) do
-    schedule
-    |> Time.diff(Time.utc_now(), :millisecond)
-    |> case do
-      secs when secs >= 0 -> secs
-      secs -> 24 * 60 * 60 + secs
-    end
-    |> timeout()
-  end
 
   @spec config :: keyword()
   defp config,
@@ -284,7 +250,7 @@ defmodule Tarearbol.Scheduler do
   @spec config_file :: binary()
   defp config_file, do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
 
-  @spec jobs :: [{any(), runner(), schedule()}]
+  @spec jobs :: [{any(), runner(), repeated_schedule() | once_schedule()}]
   defp jobs do
     Application.get_env(:tarearbol, :jobs, []) ++
       Keyword.get(config(), :jobs, []) ++
