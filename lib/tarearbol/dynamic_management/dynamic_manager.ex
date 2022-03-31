@@ -167,7 +167,9 @@ defmodule Tarearbol.DynamicManager do
   @callback handle_timeout(state :: map()) :: any()
 
   defmodule Child do
-    @moduledoc false
+    @moduledoc """
+    The internal representation of a child process under `DynamicManager` supervision
+    """
     @type t :: %{
             __struct__: __MODULE__,
             pid: pid(),

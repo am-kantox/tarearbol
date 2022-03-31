@@ -114,7 +114,7 @@ defmodule Tarearbol.Scheduler do
     @spec create(
             name :: binary(),
             runner :: Scheduler.runner(),
-            schedule :: Scheduler.schedule()
+            schedule :: Scheduler.repeated_schedule() | Scheduler.once_schedule()
           ) :: t()
     def create(name, runner, schedule) do
       schedule = normalize_schedule(schedule)

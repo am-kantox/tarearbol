@@ -122,6 +122,7 @@ defmodule Tarearbol.Mixfile do
         ],
         "Dymanic Supervisor Sugar": [
           Tarearbol.DynamicManager,
+          Tarearbol.DynamicManager.Child,
           Tarearbol.Pool
         ],
         Scheduler: [
