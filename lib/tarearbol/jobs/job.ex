@@ -16,8 +16,8 @@ defmodule Tarearbol.Job do
   require Logger
   alias Tarearbol.Utils
 
-  @task_retry Application.get_env(:tarearbol, :retry_log_prefix, "⚐")
-  @task_fail Application.get_env(:tarearbol, :fail_log_prefix, "⚑")
+  @task_retry Application.compile_env(:tarearbol, :retry_log_prefix, "⚐")
+  @task_fail Application.compile_env(:tarearbol, :fail_log_prefix, "⚑")
 
   @spec ensure(job :: job(), opts :: keyword()) :: {:error, any()} | {:ok, any()}
   def ensure(job, opts \\ []) when is_function(job, 0) or is_tuple(job) do
