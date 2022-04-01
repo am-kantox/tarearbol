@@ -154,6 +154,9 @@ defmodule Tarearbol.Scheduler do
       {true, _} ->
         :halt
 
+      {_, :halt} ->
+        :halt
+
       {_, {:ok, result}} ->
         {{:timeout, timeout(job.schedule)}, result}
 
