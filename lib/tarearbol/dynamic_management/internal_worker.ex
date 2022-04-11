@@ -1,7 +1,7 @@
 defmodule Tarearbol.InternalWorker do
   @moduledoc false
 
-  use Boundary
+  use Boundary, deps: [Tarearbol.Telemetria]
 
   use GenServer
   use Tarearbol.Telemetria
