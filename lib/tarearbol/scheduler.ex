@@ -135,9 +135,8 @@ defmodule Tarearbol.Scheduler do
   def perform(id, %{job: %Job{}} = payload),
     do: do_perform(id, payload)
 
-  @spec do_perform(id :: Tarearbol.DynamicManager.id(), payload :: map()) :: any()
   if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
-
+  @spec do_perform(id :: Tarearbol.DynamicManager.id(), payload :: map()) :: any()
   defp do_perform(id, %{job: %Job{}} = payload) do
     job = payload.job
 
