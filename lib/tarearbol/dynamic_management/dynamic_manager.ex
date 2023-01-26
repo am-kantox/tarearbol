@@ -336,8 +336,9 @@ defmodule Tarearbol.DynamicManager do
             do: handle_cast({:put, id, struct(DynamicManager.Child, props)}, state)
 
           @impl GenServer
-          def handle_cast({:update!, id, fun}, %__MODULE__{children: children} = state) when is_map_key(children, id),
-            do: {:noreply, %{state | children: Map.update!(children, id, fun)}}
+          def handle_cast({:update!, id, fun}, %__MODULE__{children: children} = state)
+              when is_map_key(children, id),
+              do: {:noreply, %{state | children: Map.update!(children, id, fun)}}
 
           def handle_cast({:update!, _id, _fun}, %__MODULE__{} = state),
             do: {:noreply, state}

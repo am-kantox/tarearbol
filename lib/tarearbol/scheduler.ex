@@ -73,6 +73,8 @@ defmodule Tarearbol.Scheduler do
   amount of milliseconds to execute after
   """
   @type once_schedule :: non_neg_integer() | Time.t()
+  @typedoc "Combined type for the all schedules possible"
+  @type schedule :: once_schedule() | repeated_schedule()
 
   defmodule Job do
     @moduledoc """
@@ -93,7 +95,7 @@ defmodule Tarearbol.Scheduler do
 
     defstruct [:name, :runner, :schedule, :once?]
 
-    @spec normalize_schedule(Scheduler.schedule()) :: {boolean(), DateTime.t() | binary()}
+    @spec normalize_schedule(Scheduler.schedule()) :: DateTime.t() | binary()
     defp normalize_schedule(schedule) do
       case schedule do
         msecs when is_integer(msecs) ->
