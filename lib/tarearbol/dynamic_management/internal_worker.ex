@@ -6,6 +6,8 @@ defmodule Tarearbol.InternalWorker do
   use GenServer
   use Tarearbol.Telemetria
 
+  require Logger
+
   alias Tarearbol.DynamicManager
 
   def start_link(manager: manager),
@@ -17,50 +19,46 @@ defmodule Tarearbol.InternalWorker do
   @impl GenServer
   def init(opts), do: {:ok, opts, {:continue, :init}}
 
-  @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
-  def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
-
-  @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
-  def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
-
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
-      @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) ::
-              :abcast
-      def multiput(module_name, id, opts),
-        do: Cloister.multicast(module_name, {:put, id, opts})
+      @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
+      def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
 
-      @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :abcast
-      def multidel(module_name, id),
-        do: Cloister.multicast(module_name, {:del, id})
+      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+      def put(module_name, id, opts), do: Cloister.multicast(module_name, {:put, id, opts})
+
+      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
+      def del(module_name, id), do: Cloister.multicast(module_name, {:del, id})
+
+      @spec restart(module_name :: module()) :: :ok
+      def restart(module_name), do: Cloister.multicast(module_name, :restart)
 
     {:error, _} ->
-      require Logger
 
-      @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
-      def multiput(module_name, id, opts) do
-        Logger.warn(
-          "multidel/3 function is unavailable: Cloister cannot be found.\nUsing local `del/3` instead"
-        )
+      @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
+      def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
-        put(module_name, id, opts)
-      end
+      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+      def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
 
-      @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :ok
-      def multidel(module_name, id) do
-        Logger.warn(
-          "multiput/3 function is unavailable: Cloister cannot be found.\nUsing local `put/3` instead"
-        )
+      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
+      def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
 
-        del(module_name, id)
-      end
+      @spec restart(module_name :: module()) :: :ok
+      def restart(module_name), do: GenServer.cast(module_name, :restart)
   end
 
-  @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
-  def get(module_name, id), do: GenServer.call(module_name, {:get, id})
+  @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+  def multiput(module_name, id, opts) do
+    Logger.warn("`multiput/3` is deprecated, use `put/3` instead")
+    put(module_name, id, opts)
+  end
 
-  @spec restart(module_name :: module()) :: :ok
-  def restart(module_name), do: GenServer.cast(module_name, :restart)
+  @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :ok
+  def multidel(module_name, id) do
+    Logger.warn("`multidel/3` function is deprecated, use `del/3` instead")
+    del(module_name, id)
+  end
 
   @impl GenServer
   def handle_continue(:init, [manager: manager] = state) do

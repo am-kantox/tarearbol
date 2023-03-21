@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.8.0`** finally standardized and deprecated multi in favor of normal `put/3`/`get/2`/`del/3`
 - **`1.7.0`** less aggressive `Map.update!/3` + modern era update
 - **`1.6.0`** `HashRing` default for `synch`/`asynch` calls in `Tarearbol.DynamicWorker` selection (to preserve idempotency amongst calls)
 - **`1.5.0`** defaults for `payload`, `timeout` and `lull` accepted in `use DynamicManager` options as `defaults: …`
