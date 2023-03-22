@@ -21,20 +21,19 @@ defmodule Tarearbol.InternalWorker do
 
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
-      @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
+      @spec get(module_name :: module(), id :: DynamicManager.id()) :: {keyword(), [atom()]}
       def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
 
-      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
       def put(module_name, id, opts), do: Cloister.multicast(module_name, {:put, id, opts})
 
-      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
+      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :abcast
       def del(module_name, id), do: Cloister.multicast(module_name, {:del, id})
 
-      @spec restart(module_name :: module()) :: :ok
+      @spec restart(module_name :: module()) :: :abcast
       def restart(module_name), do: Cloister.multicast(module_name, :restart)
 
     {:error, _} ->
-
       @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
       def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
@@ -48,13 +47,13 @@ defmodule Tarearbol.InternalWorker do
       def restart(module_name), do: GenServer.cast(module_name, :restart)
   end
 
-  @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+  @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
   def multiput(module_name, id, opts) do
     Logger.warn("`multiput/3` is deprecated, use `put/3` instead")
     put(module_name, id, opts)
   end
 
-  @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :ok
+  @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :abcast
   def multidel(module_name, id) do
     Logger.warn("`multidel/3` function is deprecated, use `del/3` instead")
     del(module_name, id)

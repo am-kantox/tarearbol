@@ -249,7 +249,10 @@ defmodule Tarearbol.Scheduler do
   @spec config :: keyword()
   defp config,
     do:
-      if(Code.ensure_loaded?(Mix), do: Keyword.get(Mix.Project.config(), :tarearbol, []), else: [])
+      if(Code.ensure_loaded?(Mix),
+        do: Keyword.get(Mix.Project.config(), :tarearbol, []),
+        else: []
+      )
 
   @spec config_file :: binary()
   defp config_file, do: Keyword.get(config(), :jobs_file, ".tarearbol.exs")
