@@ -231,11 +231,11 @@ defmodule Tarearbol.Crontab do
         day_of_week: day_of_week
       }) do
     %Tarearbol.Crontab{
-      minute: Formulae.compile(minute),
-      hour: Formulae.compile(hour),
-      day: Formulae.compile(day),
-      month: Formulae.compile(month),
-      day_of_week: Formulae.compile(day_of_week)
+      minute: Formulae.compile(minute, imports: :none),
+      hour: Formulae.compile(hour, imports: :none),
+      day: Formulae.compile(day, imports: :none),
+      month: Formulae.compile(month, imports: :none),
+      day_of_week: Formulae.compile(day_of_week, imports: :none)
     }
   end
 
@@ -468,7 +468,8 @@ defmodule Tarearbol.Crontab do
   """
   @spec formula(ct :: binary() | Tarearbol.Crontab.t()) :: :error | binary()
   def formula(ct) when is_binary(ct) do
-    with f when is_binary(f) <- ct |> parse() |> formula(), do: Formulae.compile(f)
+    with f when is_binary(f) <- ct |> parse() |> formula(),
+         do: Formulae.compile(f, imports: :none)
   end
 
   def formula(%Tarearbol.Crontab{} = ct) do

@@ -21,7 +21,7 @@ defmodule Tarearbol.InternalWorker do
 
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
-      @spec get(module_name :: module(), id :: DynamicManager.id()) :: {keyword(), [atom()]}
+      @spec get(module_name :: module(), id :: DynamicManager.id()) :: [atom()]
       def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
 
       @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast

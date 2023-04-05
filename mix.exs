@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "1.8.0"
+  @version "1.8.1"
 
   def project do
     [
@@ -68,7 +68,7 @@ defmodule Tarearbol.Mixfile do
 
   defp aliases do
     [
-      quality: ["format", "credo --strict", "dialyzer"],
+      quality: ["format", "credo --strict", "dialyzer --unmatched_returns"],
       "quality.ci": [
         "format --check-formatted",
         "credo --strict",
