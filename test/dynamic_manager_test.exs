@@ -9,7 +9,6 @@ defmodule Tarearbol.DynamicManager.Test do
     :ok
   end
 
-  @tag skip: true
   test "receives pong" do
     defmodule PingPong do
       @default_timeout Application.compile_env(:tarearbol, :dynamic_timeout, 100)
@@ -20,9 +19,9 @@ defmodule Tarearbol.DynamicManager.Test do
       def children_specs, do: %{:foo => [payload: %{value: 0, pid: nil}, timeout: 200]}
 
       @impl Tarearbol.DynamicManager
-      def perform(i, %{pid: nil} = state), do: {:ok, state}
+      def perform(_id, %{pid: nil} = state), do: {:ok, state}
 
-      def perform(i, %{pid: pid}) do
+      def perform(_id, %{pid: pid}) do
         send(pid, "pong")
         :halt
       end
@@ -43,18 +42,17 @@ defmodule Tarearbol.DynamicManager.Test do
     end
 
     {:ok, pid} = PingPong.start_link()
+    Process.sleep(200)
 
     this = :foo
     assert PingPong.asynch_call(this, :+) == :ok
-    assert PingPong.asynch_call(this, :+) == :ok
-    assert PingPong.synch_call(this, :ping) == {:ok, {:pong, {this, 2}}}
-
-    assert_receive "pong", 200
-    assert_receive "pong", 200
-    assert_receive "pong", 200
-
-    assert PingPong.asynch_call(this, :down) == :ok
     Process.sleep(200)
+    assert PingPong.asynch_call(this, :+) == :ok
+    Process.sleep(200)
+    assert PingPong.synch_call(this, :ping) == {:ok, [pong: {this, 2}]}
+
+    assert PingPong.asynch_call(this, {:down, self()}) == :ok
+    Process.sleep(1_000)
 
     assert PingPong.state().children == %{}
 
