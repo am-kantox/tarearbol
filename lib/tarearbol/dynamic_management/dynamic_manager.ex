@@ -190,6 +190,14 @@ defmodule Tarearbol.DynamicManager do
 
     {init_handler, opts} = Keyword.pop(opts, :init)
     {distributed, opts} = Keyword.pop(opts, :distributed, false)
+
+    if distributed == true and match?({:error, _}, Code.ensure_compiled(Cloister)) do
+      raise CompileError,
+        file: Path.relative_to_cwd(__CALLER__.file),
+        line: __CALLER__.line,
+        description: "`distributed: true` requires `Cloister`"
+    end
+
     {pickup, opts} = Keyword.pop(opts, :pickup, :hashring)
 
     quote generated: true, location: :keep do
@@ -478,6 +486,7 @@ defmodule Tarearbol.DynamicManager do
 
         Logger.info(
           "Starting #{inspect(__MODULE__)} with following children:\n" <>
+            "    Registry → #{inspect(@registry_module)}\n" <>
             "    State → #{inspect(@state_module)}\n" <>
             "    DynamicSupervisor → #{inspect(__dynamic_supervisor_module__())}\n" <>
             "    InternalWorker → #{inspect(__internal_worker_module__())}"
@@ -526,18 +535,35 @@ defmodule Tarearbol.DynamicManager do
         end
       end
 
-      defp do_ynch_call(type, id, message) do
-        case Registry.lookup(@registry_module, id) do
-          [{pid, nil}] -> GenServer |> apply(type, [pid, message]) |> do_wrap_result(type)
-          [] -> :error
-        end
+      case Code.ensure_compiled(Cloister) do
+        {:module, Cloister} ->
+          defp do_ynch_call(:call, id, message) do
+            {:via, Registry, {@registry_module, id}}
+            |> Cloister.multicall(message)
+            |> do_wrap_result(:multicall)
+          end
+
+          defp do_ynch_call(:cast, id, message) do
+            Cloister.multicast({:via, Registry, {@registry_module, id}}, message)
+            :ok
+          end
+
+        {:error, _} ->
+          defp do_ynch_call(type, id, message) do
+            case Registry.lookup(@registry_module, id) do
+              [{pid, nil}] -> GenServer |> apply(type, [pid, message]) |> do_wrap_result(type)
+              [] -> :error
+            end
+          end
       end
 
-      @spec do_wrap_result(result, :call | :cast) :: {:ok, result} | :ok when result: any()
+      @spec do_wrap_result(result, :multicall | :call | :cast) :: {:ok, result} | :ok
+            when result: any()
+      defp do_wrap_result(results, :multicall), do: {:ok, results}
       defp do_wrap_result(result, :call), do: {:ok, result}
       defp do_wrap_result(result, :cast), do: result
 
-      @put if unquote(distributed), do: :multiput, else: :put
+      @put if unquote(distributed), do: :put, else: :put
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
         behaviour to the list of supervised children.
@@ -562,7 +588,7 @@ defmodule Tarearbol.DynamicManager do
            """
       defdelegate multiput(id, opts), to: __MODULE__, as: :put
 
-      @del if unquote(distributed), do: :multidel, else: :del
+      @del if unquote(distributed), do: :del, else: :del
       @doc """
       Dynamically removes a supervised worker implementing `Tarearbol.DynamicManager`
       behaviour from the list of supervised children
