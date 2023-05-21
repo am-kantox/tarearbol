@@ -27,6 +27,11 @@ defmodule Tarearbol.InternalWorker do
       @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
       def put(module_name, id, opts), do: Cloister.multicast(module_name, {:put, id, opts})
 
+      @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) ::
+              :abcast
+      def put_new(module_name, id, opts),
+        do: Cloister.multicast(module_name, {:put_new, id, opts})
+
       @spec del(module_name :: module(), id :: DynamicManager.id()) :: :abcast
       def del(module_name, id), do: Cloister.multicast(module_name, {:del, id})
 
@@ -39,6 +44,9 @@ defmodule Tarearbol.InternalWorker do
 
       @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
       def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
+
+      @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+      def put_new(module_name, id, opts), do: GenServer.cast(module_name, {:put_new, id, opts})
 
       @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
       def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
@@ -71,6 +79,18 @@ defmodule Tarearbol.InternalWorker do
   @impl GenServer
   def handle_cast({:put, id, opts}, [manager: manager] = state) do
     do_put(manager, {id, opts})
+    {:noreply, state}
+  end
+
+  @impl GenServer
+  def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
+    id
+    |> manager.__state_module__().get()
+    |> case do
+      nil -> do_put(manager, {id, opts})
+      _ -> :ok
+    end
+
     {:noreply, state}
   end
 

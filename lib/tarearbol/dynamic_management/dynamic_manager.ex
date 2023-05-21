@@ -563,17 +563,30 @@ defmodule Tarearbol.DynamicManager do
       defp do_wrap_result(result, :call), do: {:ok, result}
       defp do_wrap_result(result, :cast), do: result
 
-      @put if unquote(distributed), do: :put, else: :put
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
         behaviour to the list of supervised children.
+
+      Unlike `put_new/3`, this function would have the child replaced (shut down
+      by `id` and started again with options given.)
 
       If `distributed: true` parameter was given to `use Tarearbol.DynamicManager`,
         puts the worker into all the nodes managed by `Cloister`. `:cloister` dependency
         must be added to a project to use this feature.
       """
       def put(id, opts),
-        do: apply(Tarearbol.InternalWorker, @put, [__internal_worker_module__(), id, opts])
+        do: Tarearbol.InternalWorker.put(__internal_worker_module__(), id, opts)
+
+      @doc """
+      Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`
+        behaviour to the list of supervised children if and only if it does not exist yet.
+
+      If `distributed: true` parameter was given to `use Tarearbol.DynamicManager`,
+        puts the worker into all the nodes managed by `Cloister`. `:cloister` dependency
+        must be added to a project to use this feature.
+      """
+      def put_new(id, opts),
+        do: Tarearbol.InternalWorker.put_new(__internal_worker_module__(), id, opts)
 
       @doc """
       Dynamically adds a supervised worker implementing `Tarearbol.DynamicManager`

@@ -87,6 +87,7 @@ defmodule Tarearbol.DynamicManager.Test do
     PingPong4.put(:erlang.term_to_binary(self()), timeout: 100)
     assert map_size(PingPong4.state().children) == 1
     assert_receive "pong", 200
+    PingPong4.put_new(:erlang.term_to_binary(self()), timeout: 100)
     PingPong4.del(:erlang.term_to_binary(self()))
     Process.sleep(10)
     assert map_size(PingPong4.state().children) == 0
