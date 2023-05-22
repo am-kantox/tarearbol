@@ -39,7 +39,7 @@ res = 1..20
       |> Enum.map(fn i ->
         fn -> Process.sleep(Enum.random(1..i)); i end
       end)
-      |> Tarearbol.Job.ensure_all(attempts: 1)
+      |> Tarearbol.ensure_all(attempts: 1)
 
 [{:ok, 1}, {:ok, 2}, ..., {:ok, 20}]
 ```
