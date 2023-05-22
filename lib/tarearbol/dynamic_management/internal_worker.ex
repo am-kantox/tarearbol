@@ -84,12 +84,25 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
-    id
-    |> manager.__state_module__().get()
-    |> case do
-      nil -> do_put(manager, {id, opts}, false)
-      _ -> :ok
+    updater = fn
+      ^id, %{children: children} when is_map_key(children, id) ->
+        :ok
+
+      ^id, %{children: children} = state ->
+        name = {:via, Registry, {manager.__registry_module__(), id}}
+
+        {:ok, pid} =
+          DynamicSupervisor.start_child(
+            manager.__dynamic_supervisor_module__(),
+            {Tarearbol.DynamicWorker,
+             opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
+          )
+
+        new_state = %{state | children: Map.put(children, id, %{pid: name, opts: opts})}
+        {id, new_state}
     end
+
+    manager.__state_module__().eval(id, updater)
 
     {:noreply, state}
   end
@@ -105,7 +118,7 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_cast({:del, id}, [manager: manager] = state) do
-    do_del(manager, id)
+    _ = do_del(manager, id)
     {:noreply, state}
   end
 
@@ -117,13 +130,10 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_put(
           manager :: module(),
-          {id :: DynamicManager.id(), opts :: Enum.t()},
-          enforce_deletion? :: boolean()
+          {id :: DynamicManager.id(), opts :: Enum.t()}
         ) :: pid()
-  defp do_put(manager, id_opts, enforce_deletion? \\ true)
-
-  defp do_put(manager, {id, opts}, enforce_deletion?) do
-    if enforce_deletion?, do: do_del(manager, id)
+  defp do_put(manager, {id, opts}) do
+    _ = do_del(manager, id)
 
     name = {:via, Registry, {manager.__registry_module__(), id}}
     manager.__state_module__().put(id, %{pid: name, opts: opts})
@@ -149,7 +159,7 @@ defmodule Tarearbol.InternalWorker do
 
         case Registry.lookup(manager.__registry_module__(), id) do
           [{pid, _}] ->
-            DynamicSupervisor.terminate_child(manager.__dynamic_supervisor_module__(), pid)
+            _ = DynamicSupervisor.terminate_child(manager.__dynamic_supervisor_module__(), pid)
             found
 
           [] ->

@@ -191,7 +191,7 @@ defmodule Tarearbol.DynamicWorker do
           state
       end
 
-    if reschedule, do: schedule_work(state.timeout)
+    _ = if reschedule, do: schedule_work(state.timeout)
     state
   end
 end

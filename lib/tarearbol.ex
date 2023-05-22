@@ -104,7 +104,7 @@ defmodule Tarearbol do
   def drain([]), do: []
 
   def drain(jobs) do
-    Tarearbol.Application.kill()
+    _ = Tarearbol.Application.kill()
     Enum.map(jobs, &Tarearbol.ensure/1)
   end
 end
