@@ -91,7 +91,7 @@ defmodule Tarearbol.InternalWorker do
       ^id, %{children: children} = state ->
         name = {:via, Registry, {manager.__registry_module__(), id}}
 
-        {:ok, pid} =
+        {:ok, _pid} =
           DynamicSupervisor.start_child(
             manager.__dynamic_supervisor_module__(),
             {Tarearbol.DynamicWorker,
