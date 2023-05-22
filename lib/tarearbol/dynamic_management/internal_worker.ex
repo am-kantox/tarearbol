@@ -87,7 +87,7 @@ defmodule Tarearbol.InternalWorker do
     id
     |> manager.__state_module__().get()
     |> case do
-      nil -> do_put(manager, {id, opts})
+      nil -> do_put(manager, {id, opts}, false)
       _ -> :ok
     end
 
@@ -114,21 +114,29 @@ defmodule Tarearbol.InternalWorker do
     do: {:reply, do_get(manager, id), state}
 
   if Tarearbol.Telemetria.use?(), do: @telemetria(Tarearbol.Telemetria.apply_options())
-  @spec do_put(manager :: module(), {id :: DynamicManager.id(), opts :: Enum.t()}) :: pid()
-  defp do_put(manager, {id, opts}) do
-    do_del(manager, id)
+
+  @spec do_put(
+          manager :: module(),
+          {id :: DynamicManager.id(), opts :: Enum.t()},
+          enforce_deletion? :: boolean()
+        ) :: pid()
+  defp do_put(manager, id_opts, enforce_deletion? \\ true)
+
+  defp do_put(manager, {id, opts}, enforce_deletion?) do
+    if enforce_deletion?, do: do_del(manager, id)
 
     name = {:via, Registry, {manager.__registry_module__(), id}}
-
-    {:ok, pid} =
-      DynamicSupervisor.start_child(
-        manager.__dynamic_supervisor_module__(),
-        {Tarearbol.DynamicWorker,
-         opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
-      )
-
     manager.__state_module__().put(id, %{pid: name, opts: opts})
-    pid
+
+    manager.__dynamic_supervisor_module__()
+    |> DynamicSupervisor.start_child(
+      {Tarearbol.DynamicWorker,
+       opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
+    )
+    |> case do
+      {:ok, pid} -> pid
+      {:error, {:already_started, pid}} -> pid
+    end
   end
 
   @spec do_del(manager :: module(), id :: DynamicManager.id()) :: map() | {:error, :not_found}
