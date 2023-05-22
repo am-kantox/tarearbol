@@ -98,7 +98,13 @@ defmodule Tarearbol.InternalWorker do
              opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
           )
 
-        new_state = %{state | children: Map.put(children, id, %{pid: name, opts: opts})}
+        new_state = %{
+          state
+          | ring: state.ring && HashRing.add_node(state.ring, id),
+            children:
+              Map.put(children, id, struct(DynamicManager.Child, %{pid: name, opts: opts}))
+        }
+
         {id, new_state}
     end
 
