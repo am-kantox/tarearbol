@@ -21,16 +21,19 @@ defmodule Tarearbol.InternalWorker do
 
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
+      @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
+      def start_child(worker, opts),
+        do:
+          Cloister.multiapply(DynamicSupervisor, :start_child, [
+            worker,
+            {Tarearbol.DynamicWorker, opts}
+          ])
+
       @spec get(module_name :: module(), id :: DynamicManager.id()) :: [atom()]
       def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
 
       @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
       def put(module_name, id, opts), do: Cloister.multicast(module_name, {:put, id, opts})
-
-      @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) ::
-              :abcast
-      def put_new(module_name, id, opts),
-        do: Cloister.multicast(module_name, {:put_new, id, opts})
 
       @spec del(module_name :: module(), id :: DynamicManager.id()) :: :abcast
       def del(module_name, id), do: Cloister.multicast(module_name, {:del, id})
@@ -39,14 +42,15 @@ defmodule Tarearbol.InternalWorker do
       def restart(module_name), do: Cloister.multicast(module_name, :restart)
 
     {:error, _} ->
+      @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
+      def start_child(worker, opts),
+        do: DynamicSupervisor.start_child(worker, {Tarearbol.DynamicWorker, opts})
+
       @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
       def get(module_name, id), do: GenServer.call(module_name, {:get, id})
 
       @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
       def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
-
-      @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
-      def put_new(module_name, id, opts), do: GenServer.cast(module_name, {:put_new, id, opts})
 
       @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
       def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
@@ -54,6 +58,9 @@ defmodule Tarearbol.InternalWorker do
       @spec restart(module_name :: module()) :: :ok
       def restart(module_name), do: GenServer.cast(module_name, :restart)
   end
+
+  @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+  def put_new(module_name, id, opts), do: GenServer.cast(module_name, {:put_new, id, opts})
 
   @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
   def multiput(module_name, id, opts) do
@@ -89,14 +96,11 @@ defmodule Tarearbol.InternalWorker do
         :ok
 
       ^id, %{children: children} = state ->
+        worker = manager.__dynamic_supervisor_module__()
         name = {:via, Registry, {manager.__registry_module__(), id}}
+        options = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
 
-        {:ok, _pid} =
-          DynamicSupervisor.start_child(
-            manager.__dynamic_supervisor_module__(),
-            {Tarearbol.DynamicWorker,
-             opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
-          )
+        _ = start_child(worker, {Tarearbol.DynamicWorker, options})
 
         new_state = %{
           state
