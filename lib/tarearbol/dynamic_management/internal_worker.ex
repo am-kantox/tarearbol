@@ -103,7 +103,7 @@ defmodule Tarearbol.InternalWorker do
         state = %{
           state
           | ring: state.ring && HashRing.add_node(state.ring, id),
-            children: Map.put(state.children, id, opts)
+            children: Map.put(state.children, id, struct(DynamicManager.Child, opts))
         }
 
         {start_child(worker, opts), state}
