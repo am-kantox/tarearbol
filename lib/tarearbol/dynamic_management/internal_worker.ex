@@ -93,7 +93,7 @@ defmodule Tarearbol.InternalWorker do
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
     updater = fn
       id, %{children: children} when is_map_key(children, id) -> :ok
-      _id, _state -> do_put(manager, {id, opts})
+      _id, _state -> do_put(manager, {id, opts}, false)
     end
 
     manager.__state_module__().eval(id, updater)
@@ -123,13 +123,16 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_put(
           manager :: module(),
-          {id :: DynamicManager.id(), opts :: Enum.t()}
+          {id :: DynamicManager.id(), opts :: Enum.t()},
+          full_cycle? :: boolean
         ) :: pid()
-  defp do_put(manager, {id, opts}) do
-    _ = do_del(manager, id)
+  defp do_put(manager, id_opts, full_cycle? \\ true)
+
+  defp do_put(manager, {id, opts}, full_cycle?) do
+    _ = if full_cycle?, do: do_del(manager, id)
 
     name = {:via, Registry, {manager.__registry_module__(), id}}
-    manager.__state_module__().put(id, %{pid: name, opts: opts})
+    _ = if full_cycle?, do: manager.__state_module__().put(id, %{pid: name, opts: opts})
 
     manager.__dynamic_supervisor_module__()
     |> DynamicSupervisor.start_child(
