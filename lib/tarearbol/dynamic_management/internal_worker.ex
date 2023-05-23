@@ -108,7 +108,15 @@ defmodule Tarearbol.InternalWorker do
             children: Map.put(state.children, id, struct(DynamicManager.Child, opts))
         }
 
-        {start_child(sup, opts), state}
+        result =
+          Task.start_link(Cloister, :multiapply, [
+            [node() | Node.list()],
+            DynamicSupervisor,
+            :start_child,
+            [sup, {Tarearbol.DynamicWorker, opts}]
+          ])
+
+        {result, state}
     end
 
     _ok = manager.__state_module__().eval(id, updater)
