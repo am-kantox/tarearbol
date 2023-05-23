@@ -22,12 +22,14 @@ defmodule Tarearbol.InternalWorker do
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
       @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
-      def start_child(worker, opts),
-        do:
-          Cloister.multiapply([node() | Node.list()], DynamicSupervisor, :start_child, [
-            worker,
-            {Tarearbol.DynamicWorker, opts}
-          ])
+      def start_child(worker, opts) do
+        Task.start_link(Cloister, :multiapply, [
+          [node() | Node.list()],
+          DynamicSupervisor,
+          :start_child,
+          [worker, {Tarearbol.DynamicWorker, opts}]
+        ])
+      end
 
       @spec get(module_name :: module(), id :: DynamicManager.id()) :: [atom()]
       def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
