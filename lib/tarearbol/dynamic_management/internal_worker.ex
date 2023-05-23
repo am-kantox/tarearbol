@@ -24,7 +24,7 @@ defmodule Tarearbol.InternalWorker do
       @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
       def start_child(worker, opts),
         do:
-          Cloister.multiapply(DynamicSupervisor, :start_child, [
+          Cloister.multiapply([node() | Node.list()], DynamicSupervisor, :start_child, [
             worker,
             {Tarearbol.DynamicWorker, opts}
           ])
@@ -92,11 +92,26 @@ defmodule Tarearbol.InternalWorker do
   @impl GenServer
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
     updater = fn
-      id, %{children: children} when is_map_key(children, id) -> :ok
-      _id, _state -> do_put(manager, {id, opts}, false)
+      id, %{children: children} when is_map_key(children, id) ->
+        :ok
+
+      _id, state ->
+        worker = manager.__dynamic_supervisor_module__()
+        name = {:via, Registry, {manager.__registry_module__(), id}}
+        opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
+
+        state = %{
+          state
+          | ring: state.ring && HashRing.add_node(state.ring, id),
+            children: Map.put(state.children, id, opts)
+        }
+
+        {start_child(worker, opts), state}
     end
 
-    manager.__state_module__().eval(id, updater)
+    result = manager.__state_module__().eval(id, updater)
+    Logger.info("[🌴] Put new child: " <> inspect(result))
+
     {:noreply, state}
   end
 
@@ -123,16 +138,13 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_put(
           manager :: module(),
-          {id :: DynamicManager.id(), opts :: Enum.t()},
-          full_cycle? :: boolean
+          {id :: DynamicManager.id(), opts :: Enum.t()}
         ) :: pid()
-  defp do_put(manager, id_opts, full_cycle? \\ true)
-
-  defp do_put(manager, {id, opts}, full_cycle?) do
-    _ = if full_cycle?, do: do_del(manager, id)
+  defp do_put(manager, {id, opts}) do
+    _ = do_del(manager, id)
 
     name = {:via, Registry, {manager.__registry_module__(), id}}
-    _ = if full_cycle?, do: manager.__state_module__().put(id, %{pid: name, opts: opts})
+    _ = manager.__state_module__().put(id, %{pid: name, opts: opts})
 
     manager.__dynamic_supervisor_module__()
     |> DynamicSupervisor.start_child(
