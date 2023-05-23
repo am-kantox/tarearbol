@@ -78,7 +78,7 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_continue(:init, [manager: manager] = state) do
-    Enum.each(manager.children_specs(), &do_put(manager, &1))
+    Enum.each(manager.children_specs(), &do_put(manager, &1, false))
 
     manager.__state_module__().update_state(:started)
     manager.handle_state_change(:started)
@@ -87,40 +87,13 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_cast({:put, id, opts}, [manager: manager] = state) do
-    do_put(manager, {id, opts})
+    _ = do_put(manager, {id, opts}, true)
     {:noreply, state}
   end
 
   @impl GenServer
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
-    updater = fn
-      id, %{children: children} when is_map_key(children, id) ->
-        :ok
-
-      _id, state ->
-        sup = manager.__dynamic_supervisor_module__()
-        name = {:via, Registry, {manager.__registry_module__(), id}}
-        opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
-
-        state = %{
-          state
-          | ring: state.ring && HashRing.add_node(state.ring, id),
-            children: Map.put(state.children, id, struct(DynamicManager.Child, opts))
-        }
-
-        result =
-          Task.start_link(Cloister, :multiapply, [
-            [node() | Node.list()],
-            DynamicSupervisor,
-            :start_child,
-            [sup, {Tarearbol.DynamicWorker, opts}]
-          ])
-
-        {result, state}
-    end
-
-    _ok = manager.__state_module__().eval(id, updater)
-
+    _ = do_put(manager, {id, opts}, false)
     {:noreply, state}
   end
 
@@ -147,19 +120,33 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_put(
           manager :: module(),
-          {id :: DynamicManager.id(), opts :: Enum.t()}
+          {id :: DynamicManager.id(), opts :: Enum.t()},
+          delete? :: boolean()
         ) :: pid()
-  defp do_put(manager, {id, opts}) do
-    _ = do_del(manager, id)
+  defp do_put(manager, {id, opts}, delete?) do
+    _ = if delete?, do: do_del(manager, id)
 
-    name = {:via, Registry, {manager.__registry_module__(), id}}
-    _ = manager.__state_module__().put(id, %{pid: name, opts: opts})
+    manager
+    |> do_get(id)
+    |> case do
+      %{children: %{^id => %DynamicManager.Child{pid: pid}}} ->
+        {:ok, pid}
 
-    manager.__dynamic_supervisor_module__()
-    |> DynamicSupervisor.start_child(
-      {Tarearbol.DynamicWorker,
-       opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
-    )
+      _state ->
+        sup = manager.__dynamic_supervisor_module__()
+        name = {:via, Registry, {manager.__registry_module__(), id}}
+        worker_opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
+        child_opts = struct(DynamicManager.Child, %{pid: name, opts: opts})
+
+        manager.__state_module__().put(id, child_opts)
+
+        Task.start_link(Cloister, :multiapply, [
+          [node() | Node.list()],
+          DynamicSupervisor,
+          :start_child,
+          [sup, {Tarearbol.DynamicWorker, worker_opts}]
+        ])
+    end
     |> case do
       {:ok, pid} -> pid
       {:error, {:already_started, pid}} -> pid
