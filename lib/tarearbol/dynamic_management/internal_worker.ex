@@ -92,28 +92,11 @@ defmodule Tarearbol.InternalWorker do
   @impl GenServer
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
     updater = fn
-      ^id, %{children: children} when is_map_key(children, id) ->
-        :ok
-
-      ^id, %{children: children} = state ->
-        worker = manager.__dynamic_supervisor_module__()
-        name = {:via, Registry, {manager.__registry_module__(), id}}
-        options = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
-
-        _ = start_child(worker, {Tarearbol.DynamicWorker, options})
-
-        new_state = %{
-          state
-          | ring: state.ring && HashRing.add_node(state.ring, id),
-            children:
-              Map.put(children, id, struct(DynamicManager.Child, %{pid: name, opts: opts}))
-        }
-
-        {id, new_state}
+      id, %{children: children} when is_map_key(children, id) -> :ok
+      _id, _state -> do_put(manager, {id, opts})
     end
 
     manager.__state_module__().eval(id, updater)
-
     {:noreply, state}
   end
 
