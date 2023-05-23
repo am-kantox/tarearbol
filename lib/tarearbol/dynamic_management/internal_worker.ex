@@ -96,7 +96,7 @@ defmodule Tarearbol.InternalWorker do
         :ok
 
       _id, state ->
-        worker = manager.__dynamic_supervisor_module__()
+        sup = manager.__dynamic_supervisor_module__()
         name = {:via, Registry, {manager.__registry_module__(), id}}
         opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
 
@@ -106,11 +106,10 @@ defmodule Tarearbol.InternalWorker do
             children: Map.put(state.children, id, struct(DynamicManager.Child, opts))
         }
 
-        {start_child(worker, opts), state}
+        {start_child(sup, opts), state}
     end
 
-    result = manager.__state_module__().eval(id, updater)
-    Logger.info("[🌴] Put new child: " <> inspect(result))
+    _ok = manager.__state_module__().eval(id, updater)
 
     {:noreply, state}
   end

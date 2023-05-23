@@ -290,11 +290,10 @@ defmodule Tarearbol.DynamicManager do
           @spec update_state(state :: :down | :up | :starting | :unknown) :: :ok
           def update_state(state), do: GenServer.cast(@this, {:update_state, state})
 
-          @spec eval(id :: DynamicManager.id(), (DynamicManager.id(), t() -> t() | {result, t()})) ::
-                  result
-                when result: any()
+          @spec eval(id :: DynamicManager.id(), (DynamicManager.id(), t() -> t() | {any(), t()})) ::
+                  :ok
           def eval(id, fun) when is_function(fun, 1) or is_function(fun, 2),
-            do: GenServer.call(@this, {:eval, id, fun})
+            do: GenServer.cast(@this, {:eval, id, fun})
 
           @spec put(id :: DynamicManager.id(), props :: map() | keyword()) :: :ok
           def put(id, props), do: GenServer.cast(@this, {:put, id, props})
@@ -347,6 +346,14 @@ defmodule Tarearbol.DynamicManager do
                 %__MODULE__{children: children} = state
               ),
               do: {:reply, Map.get(children, id, default), state}
+
+          @impl GenServer
+          def handle_cast({:eval, id, fun}, %__MODULE__{} = state) do
+            {:reply, _result, new_state} =
+              handle_call({:eval, id, fun}, {self(), make_ref()}, state)
+
+            {:noreply, new_state}
+          end
 
           @impl GenServer
           def handle_cast(
