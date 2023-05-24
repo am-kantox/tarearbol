@@ -189,7 +189,7 @@ defmodule Tarearbol.DynamicWorker do
           %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
 
         {:ok, result} ->
-          state
+          %{state | payload: result}
 
         result ->
           restate.(result)
