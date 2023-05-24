@@ -1,7 +1,7 @@
 defmodule Tarearbol.InternalWorker do
   @moduledoc false
 
-  use Boundary, deps: [Tarearbol.Telemetria]
+  use Boundary, deps: [Tarearbol.Telemetria, Tarearbol.DynamicManager]
 
   use GenServer
   use Tarearbol.Telemetria
@@ -66,19 +66,19 @@ defmodule Tarearbol.InternalWorker do
 
   @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
   def multiput(module_name, id, opts) do
-    Logger.warn("`multiput/3` is deprecated, use `put/3` instead")
+    Logger.warn("[🌴] `multiput/3` is deprecated, use `put/3` instead")
     put(module_name, id, opts)
   end
 
   @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :abcast
   def multidel(module_name, id) do
-    Logger.warn("`multidel/3` function is deprecated, use `del/3` instead")
+    Logger.warn("[🌴] `multidel/3` function is deprecated, use `del/3` instead")
     del(module_name, id)
   end
 
   @impl GenServer
   def handle_continue(:init, [manager: manager] = state) do
-    Enum.each(manager.children_specs(), &do_put(manager, &1))
+    Enum.each(manager.children_specs(), &do_put(manager, &1, false))
 
     manager.__state_module__().update_state(:started)
     manager.handle_state_change(:started)
@@ -87,40 +87,13 @@ defmodule Tarearbol.InternalWorker do
 
   @impl GenServer
   def handle_cast({:put, id, opts}, [manager: manager] = state) do
-    do_put(manager, {id, opts})
+    _ = do_put(manager, {id, opts}, true)
     {:noreply, state}
   end
 
   @impl GenServer
   def handle_cast({:put_new, id, opts}, [manager: manager] = state) do
-    updater = fn
-      id, %{children: children} when is_map_key(children, id) ->
-        :ok
-
-      _id, state ->
-        sup = manager.__dynamic_supervisor_module__()
-        name = {:via, Registry, {manager.__registry_module__(), id}}
-        opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
-
-        state = %{
-          state
-          | ring: state.ring && HashRing.add_node(state.ring, id),
-            children: Map.put(state.children, id, struct(DynamicManager.Child, opts))
-        }
-
-        result =
-          Task.start_link(Cloister, :multiapply, [
-            [node() | Node.list()],
-            DynamicSupervisor,
-            :start_child,
-            [sup, {Tarearbol.DynamicWorker, opts}]
-          ])
-
-        {result, state}
-    end
-
-    _ok = manager.__state_module__().eval(id, updater)
-
+    _ = do_put(manager, {id, opts}, false)
     {:noreply, state}
   end
 
@@ -147,33 +120,41 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_put(
           manager :: module(),
-          {id :: DynamicManager.id(), opts :: Enum.t()}
+          {id :: DynamicManager.id(), opts :: Enum.t()},
+          delete? :: boolean()
         ) :: pid()
-  defp do_put(manager, {id, opts}) do
-    _ = do_del(manager, id)
+  defp do_put(manager, {id, opts}, delete?) do
+    _ = if delete?, do: do_del(manager, id)
 
     name = {:via, Registry, {manager.__registry_module__(), id}}
-    _ = manager.__state_module__().put(id, %{pid: name, opts: opts})
 
-    manager.__dynamic_supervisor_module__()
-    |> DynamicSupervisor.start_child(
-      {Tarearbol.DynamicWorker,
-       opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})}
-    )
+    updater = fn
+      nil -> {:update, struct(DynamicManager.Child, %{pid: name, opts: opts})}
+      %DynamicManager.Child{} -> :ignore
+    end
+
+    manager
+    |> do_get_and_update(id, updater)
+    |> case do
+      %DynamicManager.Child{pid: pid} ->
+        {:ok, pid}
+
+      nil ->
+        worker_opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
+        start_child(manager.__dynamic_supervisor_module__(), worker_opts)
+    end
     |> case do
       {:ok, pid} -> pid
-      {:error, {:already_started, pid}} -> pid
     end
   end
 
-  @spec do_del(manager :: module(), id :: DynamicManager.id()) :: map() | {:error, :not_found}
+  @spec do_del(manager :: module(), id :: DynamicManager.id()) ::
+          map() | {:error, :not_found | :not_registered | {:unexpected, any()}}
   defp do_del(manager, id) do
     manager
-    |> do_get(id)
+    |> do_get_and_update(id, fn _ -> :remove end)
     |> case do
-      %{pid: {:via, Registry, {_, ^id}}} = found ->
-        manager.__state_module__().del(id)
-
+      %DynamicManager.Child{pid: {:via, Registry, {_, ^id}}} = found ->
         case Registry.lookup(manager.__registry_module__(), id) do
           [{pid, _}] ->
             _ = DynamicSupervisor.terminate_child(manager.__dynamic_supervisor_module__(), pid)
@@ -193,4 +174,13 @@ defmodule Tarearbol.InternalWorker do
 
   @spec do_get(manager :: module(), id :: DynamicManager.id()) :: map()
   defp do_get(manager, id), do: manager.__state_module__().get(id, %{})
+
+  @spec do_get_and_update(
+          manager :: module(),
+          id :: DynamicManager.id(),
+          fun ::
+            (DynamicManager.Child.t() | nil ->
+               :ignore | :remove | {:update, DynamicManager.Child.t() | nil})
+        ) :: map() | nil
+  defp do_get_and_update(manager, id, fun), do: manager.__state_module__().get_and_update(id, fun)
 end
