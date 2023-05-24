@@ -149,7 +149,7 @@ defmodule Tarearbol.Scheduler do
         f when is_function(f, 0) -> f.()
       end
 
-    Logger.info("[⌚] Job ##{job.name} has been performed: #{inspect(result)}")
+    Logger.info("[🌴] Job ##{job.name} has been performed: #{inspect(result)}")
 
     case {job.once?, result} do
       {true, _} ->
@@ -166,7 +166,7 @@ defmodule Tarearbol.Scheduler do
 
       {_, result} ->
         Logger.warn(
-          "[⌚] Unexpected return from the job: #{inspect(result)}, must be :halt, or {:ok, _}, or {{:reschedule, _}, _}"
+          "[🌴] Unexpected return from the job: #{inspect(result)}, must be :halt, or {:ok, _}, or {{:reschedule, _}, _}"
         )
 
         {{:timeout, timeout(job.schedule)}, result}

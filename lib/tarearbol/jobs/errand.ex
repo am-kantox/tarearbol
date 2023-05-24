@@ -41,7 +41,7 @@ defmodule Tarearbol.Errand do
   @deprecated "Use external function or `{m, f}` or `{m, f, a}` tuple as the job instead"
   defp do_run_in(:local, job, interval, opts) do
     Logger.debug(
-      "[DEPRECATED] spawning local functions is deprecated; use external function or `{m, f}` or `{m, f, a}` tuple as the job instead"
+      "[🌴] [DEPRECATED] spawning local functions is deprecated; use external function or `{m, f}` or `{m, f, a}` tuple as the job instead"
     )
 
     Tarearbol.Application.task!(fn ->

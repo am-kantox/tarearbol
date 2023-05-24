@@ -61,7 +61,10 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def handle_info({:EXIT, _pid, reason}, state) do
-    Logger.warn("Unexpected EXIT reason " <> inspect(reason) <> "\nState:\n" <> inspect(state))
+    Logger.warn(
+      "[🌴] Unexpected EXIT reason " <> inspect(reason) <> "\nState:\n" <> inspect(state)
+    )
+
     {:stop, reason, state}
   end
 
@@ -149,7 +152,7 @@ defmodule Tarearbol.DynamicWorker do
 
         :multihalt ->
           Logger.warn("""
-          Returning `:multihalt` from callbacks is deprecated.
+          [🌴] Returning `:multihalt` from callbacks is deprecated.
           Use `distributed: true` parameter in call to `use Tarearbol.DynamicManager`
             and return regular `:halt` instead.
           """)
