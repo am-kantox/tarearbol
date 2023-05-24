@@ -147,8 +147,9 @@ defmodule Tarearbol.DynamicWorker do
          %{manager: manager, timeout: timeout, id: id, payload: payload, lull: lull} = state,
          reschedule
        ) do
-    restate = fn value ->
-      manager.__state_module__().update!(id, &%{&1 | value: value, busy?: nil})
+    restate = fn
+      nil -> :ok
+      value -> manager.__state_module__().update!(id, &%{&1 | value: value, busy?: nil})
     end
 
     state =

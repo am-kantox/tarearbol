@@ -126,7 +126,7 @@ defmodule Tarearbol.InternalWorker do
           manager :: module(),
           {id :: DynamicManager.id(), opts :: Enum.t()},
           delete? :: boolean()
-        ) :: pid()
+        ) :: {:ok, pid()}
   defp do_put(manager, {id, opts}, delete?) do
     _ = if delete?, do: do_del(manager, id)
 
@@ -146,9 +146,6 @@ defmodule Tarearbol.InternalWorker do
       nil ->
         worker_opts = opts |> Map.new() |> Map.merge(%{id: id, manager: manager, name: name})
         start_child(manager.__dynamic_supervisor_module__(), worker_opts)
-    end
-    |> case do
-      {:ok, pid} -> pid
     end
   end
 
