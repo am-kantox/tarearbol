@@ -29,52 +29,55 @@ defmodule Tarearbol.InternalWorker do
           {Tarearbol.DynamicWorker, opts}
         ])
         |> tap(fn apply_result ->
-          Logger.info(
+          Logger.debug(
             "[🌴] Request to start new worker has been performed: #{inspect(apply_result)}"
           )
         end)
       end
 
-      @spec get(module_name :: module(), id :: DynamicManager.id()) :: [atom()]
-      def get(module_name, id), do: Cloister.multicall(module_name, {:get, id})
-
-      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
-      def put(module_name, id, opts), do: Cloister.multicast(module_name, {:put, id, opts})
-
-      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :abcast
-      def del(module_name, id), do: Cloister.multicast(module_name, {:del, id})
-
-      @spec restart(module_name :: module()) :: :abcast
-      def restart(module_name), do: Cloister.multicast(module_name, :restart)
+      @spec terminate_child(worker :: module(), name :: GenServer.name()) :: any()
+      def terminate_child(worker, name) do
+        [node() | Node.list()]
+        |> Cloister.multiapply(DynamicSupervisor, :terminate_child, [worker, name])
+        |> tap(fn apply_result ->
+          Logger.debug(
+            "[🌴] Request to terminate worker has been performed: #{inspect(apply_result)}"
+          )
+        end)
+      end
 
     {:error, _} ->
       @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
       def start_child(worker, opts),
         do: DynamicSupervisor.start_child(worker, {Tarearbol.DynamicWorker, opts})
 
-      @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
-      def get(module_name, id), do: GenServer.call(module_name, {:get, id})
-
-      @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
-      def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
-
-      @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
-      def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
-
-      @spec restart(module_name :: module()) :: :ok
-      def restart(module_name), do: GenServer.cast(module_name, :restart)
+      @spec terminate_child(worker :: module(), name :: GenServer.name()) :: any()
+      def terminate_child(worker, name),
+        do: DynamicSupervisor.terminate_child(worker, name)
   end
+
+  @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
+  def get(module_name, id), do: GenServer.call(module_name, {:get, id})
+
+  @spec put(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
+  def put(module_name, id, opts), do: GenServer.cast(module_name, {:put, id, opts})
 
   @spec put_new(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
   def put_new(module_name, id, opts), do: GenServer.cast(module_name, {:put_new, id, opts})
 
-  @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :abcast
+  @spec del(module_name :: module(), id :: DynamicManager.id()) :: :ok
+  def del(module_name, id), do: GenServer.cast(module_name, {:del, id})
+
+  @spec restart(module_name :: module()) :: :ok
+  def restart(module_name), do: GenServer.cast(module_name, :restart)
+
+  @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
   def multiput(module_name, id, opts) do
     Logger.warn("[🌴] `multiput/3` is deprecated, use `put/3` instead")
     put(module_name, id, opts)
   end
 
-  @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :abcast
+  @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :ok
   def multidel(module_name, id) do
     Logger.warn("[🌴] `multidel/3` function is deprecated, use `del/3` instead")
     del(module_name, id)
@@ -150,22 +153,17 @@ defmodule Tarearbol.InternalWorker do
   end
 
   @spec do_del(manager :: module(), id :: DynamicManager.id()) ::
-          map() | {:error, :not_found | :not_registered | {:unexpected, any()}}
+          struct() | {:error, :not_found | :not_registered}
   defp do_del(manager, id) do
     manager
     |> do_get_and_update(id, fn _ -> :remove end)
     |> case do
-      %DynamicManager.Child{pid: {:via, Registry, {_, ^id}}} = found ->
-        case Registry.lookup(manager.__registry_module__(), id) do
-          [{pid, _}] ->
-            _ = DynamicSupervisor.terminate_child(manager.__dynamic_supervisor_module__(), pid)
-            found
-
-          [] ->
-            {:error, :not_registered}
-
-          other ->
-            {:error, {:unexpected, other}}
+      %DynamicManager.Child{pid: pid} = found ->
+        if is_pid(GenServer.whereis(pid)) do
+          {_, _} = terminate_child(manager.__dynamic_supervisor_module__(), pid)
+          found
+        else
+          {:error, :not_registered}
         end
 
       _ ->

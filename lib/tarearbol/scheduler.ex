@@ -185,7 +185,7 @@ defmodule Tarearbol.Scheduler do
           name :: binary(),
           runner :: runner(),
           schedule :: repeated_schedule() | once_schedule()
-        ) :: :abcast
+        ) :: :ok
   def push(name, runner, schedule) do
     {name, opts} = job!(name, runner, schedule)
     Tarearbol.Scheduler.put(name, opts)
@@ -201,7 +201,7 @@ defmodule Tarearbol.Scheduler do
           name :: binary(),
           runner :: runner(),
           schedule :: repeated_schedule() | once_schedule()
-        ) :: :abcast
+        ) :: :ok
   def push!(name, runner, schedule) do
     File.write!(config_file(), Macro.to_string([{name, runner, schedule} | jobs()]))
     push(name, runner, schedule)
