@@ -23,12 +23,16 @@ defmodule Tarearbol.InternalWorker do
     {:module, Cloister} ->
       @spec start_child(worker :: module(), opts :: Enum.t()) :: any()
       def start_child(worker, opts) do
-        Task.start_link(Cloister, :multiapply, [
-          [node() | Node.list()],
-          DynamicSupervisor,
-          :start_child,
-          [worker, {Tarearbol.DynamicWorker, opts}]
+        [node() | Node.list()]
+        |> Cloister.multiapply(DynamicSupervisor, :start_child, [
+          worker,
+          {Tarearbol.DynamicWorker, opts}
         ])
+        |> tap(fn apply_result ->
+          Logger.info(
+            "[🌴] Request to start new worker has been performed: #{inspect(apply_result)}"
+          )
+        end)
       end
 
       @spec get(module_name :: module(), id :: DynamicManager.id()) :: [atom()]
@@ -129,8 +133,8 @@ defmodule Tarearbol.InternalWorker do
     name = {:via, Registry, {manager.__registry_module__(), id}}
 
     updater = fn
-      nil -> {:update, struct(DynamicManager.Child, %{pid: name, opts: opts})}
       %DynamicManager.Child{} -> :ignore
+      nil -> {:update, struct(DynamicManager.Child, %{pid: name, opts: opts})}
     end
 
     manager

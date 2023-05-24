@@ -359,18 +359,23 @@ defmodule Tarearbol.DynamicManager do
           def handle_call(
                 {:get_and_update, id, fun},
                 _from,
-                %__MODULE__{children: children} = state
+                %__MODULE__{ring: ring, children: children} = state
               ) do
             value = Map.get(children, id)
 
-            children =
+            {ring, children} =
               case fun.(value) do
-                :ignore -> children
-                :remove -> Map.delete(children, id)
-                {:update, %DynamicManager.Child{} = child} -> Map.put(children, id, child)
+                :ignore ->
+                  {ring, children}
+
+                :remove ->
+                  {ring && HashRing.remove_node(ring, id), Map.delete(children, id)}
+
+                {:update, %DynamicManager.Child{} = child} ->
+                  {ring && HashRing.add_node(ring, id), Map.put(children, id, child)}
               end
 
-            {:reply, value, %__MODULE__{state | children: children}}
+            {:reply, value, %__MODULE__{state | ring: ring, children: children}}
           end
 
           @impl GenServer

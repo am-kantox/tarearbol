@@ -54,9 +54,9 @@ defmodule Tarearbol.DynamicWorker do
 
   @impl GenServer
   def terminate(reason, %{manager: manager, id: id, payload: payload}) do
-    result = manager.terminate(reason, {id, payload})
-    manager.__state_module__().del(id)
-    result
+    reason
+    |> manager.terminate({id, payload})
+    |> tap(fn _ -> manager.__state_module__().del(id) end)
   end
 
   @impl GenServer
