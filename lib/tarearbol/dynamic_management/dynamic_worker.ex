@@ -127,9 +127,12 @@ defmodule Tarearbol.DynamicWorker do
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 
   @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
-  defp handle_request(id, manager) do
-    manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()})
-    id
+  case Code.ensure_compiled(Cloister) do
+    {:module, Cloister} ->
+      defp handle_request(id, _manager), do: id
+    {:error, _} ->
+      defp handle_request(id, manager),
+        do: tap(id, fn id -> manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()}) end)
   end
 
   @spec handle_response(Tarearbol.DynamicManager.response(), state, boolean()) ::
@@ -186,7 +189,6 @@ defmodule Tarearbol.DynamicWorker do
           %{state | timeout: new_timeout, payload: result, lull: lull * new_timeout / timeout}
 
         {:ok, result} ->
-          restate.(result)
           state
 
         result ->
