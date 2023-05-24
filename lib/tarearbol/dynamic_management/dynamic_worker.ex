@@ -130,9 +130,13 @@ defmodule Tarearbol.DynamicWorker do
   case Code.ensure_compiled(Cloister) do
     {:module, Cloister} ->
       defp handle_request(id, _manager), do: id
+
     {:error, _} ->
       defp handle_request(id, manager),
-        do: tap(id, fn id -> manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()}) end)
+        do:
+          tap(id, fn id ->
+            manager.__state_module__().update!(id, &%{&1 | busy?: DateTime.utc_now()})
+          end)
   end
 
   @spec handle_response(Tarearbol.DynamicManager.response(), state, boolean()) ::

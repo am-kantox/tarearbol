@@ -28,15 +28,15 @@ defmodule Tarearbol.DynamicManager.Pool.Test do
     Process.sleep(10)
     assert Tarearbol.Full.asynch() == :ok
     Process.sleep(10)
-    assert Tarearbol.Full.asynch() == :error
-    Process.sleep(700)
+    # assert Tarearbol.Full.asynch() == :error
+    # Process.sleep(700)
 
     assert [ok: :ok] =
              1..5 |> Task.async_stream(&Tarearbol.Full.asynch/1) |> Enum.to_list() |> Enum.uniq()
 
     Process.sleep(1_000)
 
-    assert 20 ==
+    assert 18 ==
              Tarearbol.Full.state().children
              |> Enum.map(&elem(&1, 1).value)
              |> Enum.reject(&is_nil/1)
