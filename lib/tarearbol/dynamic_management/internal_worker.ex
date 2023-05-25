@@ -35,10 +35,10 @@ defmodule Tarearbol.InternalWorker do
         end)
       end
 
-      @spec terminate_child(worker :: module(), name :: GenServer.name()) :: any()
+      @spec terminate_child(worker :: module(), name :: GenServer.name() | pid()) :: any()
       def terminate_child(worker, name) do
         [node() | Node.list()]
-        |> Cloister.multiapply(DynamicSupervisor, :terminate_child, [worker, name])
+        |> Cloister.multiapply(__MODULE__, :terminate_local_child, [worker, name])
         |> tap(fn apply_result ->
           Logger.debug(
             "[🌴] Request to terminate worker has been performed: #{inspect(apply_result)}"
@@ -51,10 +51,19 @@ defmodule Tarearbol.InternalWorker do
       def start_child(worker, opts),
         do: DynamicSupervisor.start_child(worker, {Tarearbol.DynamicWorker, opts})
 
-      @spec terminate_child(worker :: module(), name :: GenServer.name()) :: any()
+      @spec terminate_child(worker :: module(), name :: GenServer.name() | pid()) :: any()
       def terminate_child(worker, name),
-        do: DynamicSupervisor.terminate_child(worker, name)
+        do: terminate_local_child(worker, name)
   end
+
+  @spec terminate_local_child(worker :: module(), name :: GenServer.name() | pid()) :: any()
+  def terminate_local_child(worker, name) do
+    case GenServer.whereis(name) do
+      pid when is_pid(pid) -> DynamicSupervisor.terminate_child(worker, pid)
+      other -> Logger.error("[🌴] Failed to terminate worker ‹" <> inspect(name) <> "›, whereis: ‹" <> other <> "›")
+    end
+  end
+
 
   @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})

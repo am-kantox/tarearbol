@@ -472,7 +472,7 @@ defmodule Tarearbol.DynamicManager do
       @impl Tarearbol.DynamicManager
       def perform(id, _payload) do
         Logger.warning(
-          "[🌴] perform for id[#{id}] was executed with state\n\n" <>
+          "[🌴] perform for id[#{inspect(id)}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `perform/2` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
@@ -484,7 +484,7 @@ defmodule Tarearbol.DynamicManager do
       @impl Tarearbol.DynamicManager
       def call(_message, _from, {id, _payload}) do
         Logger.warning(
-          "[🌴] call for id[#{id}] was executed with state\n\n" <>
+          "[🌴] call for id[#{inspect(id)}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `call/3` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
@@ -496,7 +496,7 @@ defmodule Tarearbol.DynamicManager do
       @impl Tarearbol.DynamicManager
       def cast(_message, {id, _payload}) do
         Logger.warning(
-          "[🌴] cast for id[#{id}] was executed with state\n\n" <>
+          "[🌴] cast for id[#{inspect(id)}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `cast/2` in your #{inspect(__MODULE__)}\n" <>
             "to perform some actual work instead of printing this message"
@@ -508,9 +508,9 @@ defmodule Tarearbol.DynamicManager do
       @impl Tarearbol.DynamicManager
       def terminate(reason, {id, payload}) do
         Logger.info(
-          "[🌴] Exiting DynamicWorker[" <>
+          "[🌴] Exiting DynamicWorker ‹" <>
             inspect(id) <>
-            "] with reason " <> inspect(reason) <> ". Payload: " <> inspect(payload)
+            "› with reason " <> inspect(reason) <> ". Payload: " <> inspect(payload)
         )
       end
 

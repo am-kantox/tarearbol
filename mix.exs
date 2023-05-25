@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "1.10.1"
+  @version "1.10.2"
 
   def project do
     [
