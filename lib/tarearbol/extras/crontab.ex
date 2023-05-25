@@ -459,8 +459,9 @@ defmodule Tarearbol.Crontab do
 
   _Examples_
 
-      iex> Tarearbol.Crontab.formula("42 3 28 08 *").formula
-      "(day == 28) && (rem(day_of_week, 1) == 0) && (hour == 3) && (minute == 42) && (month == 8)"
+      iex> formula = Tarearbol.Crontab.formula("42 3 28 08 *").formula
+      ...> formula |> String.split(" && ") |> Enum.sort()
+      ["(day == 28)", "(hour == 3)", "(minute == 42)", "(month == 8)", "(rem(day_of_week, 1) == 0)"]
 
       iex> Tarearbol.Crontab.formula("423 * * * *")
       {:error, [minute: {:could_not_parse_field, ["423"]}]}

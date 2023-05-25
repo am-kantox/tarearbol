@@ -165,7 +165,7 @@ defmodule Tarearbol.Scheduler do
         {:replace, id, %{payload | job: %Job{job | schedule: schedule}}}
 
       {_, result} ->
-        Logger.warn(
+        Logger.warning(
           "[🌴] Unexpected return from the job: #{inspect(result)}, must be :halt, or {:ok, _}, or {{:reschedule, _}, _}"
         )
 

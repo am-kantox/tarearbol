@@ -73,13 +73,13 @@ defmodule Tarearbol.InternalWorker do
 
   @spec multiput(module_name :: module(), id :: DynamicManager.id(), opts :: Enum.t()) :: :ok
   def multiput(module_name, id, opts) do
-    Logger.warn("[🌴] `multiput/3` is deprecated, use `put/3` instead")
+    Logger.warning("[🌴] `multiput/3` is deprecated, use `put/3` instead")
     put(module_name, id, opts)
   end
 
   @spec multidel(module_name :: module(), id :: DynamicManager.id()) :: :ok
   def multidel(module_name, id) do
-    Logger.warn("[🌴] `multidel/3` function is deprecated, use `del/3` instead")
+    Logger.warning("[🌴] `multidel/3` function is deprecated, use `del/3` instead")
     del(module_name, id)
   end
 

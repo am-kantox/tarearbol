@@ -136,8 +136,8 @@ Tarearbol.drain
 
 ### Changelog
 
-- **`1.9.2`** single global state process in cluster
-- **`1.9.0`** `put_new/3` to avoid flip-flopping children in cluster
+- **`1.10.1`** OTP26 ready
+- **`1.10.0`** single global state process in cluster + `put_new/3` to avoid flip-flopping children in cluster
 - **`1.8.0`** finally standardized and deprecated multi in favor of normal `put/3`/`get/2`/`del/3`
 - **`1.7.0`** less aggressive `Map.update!/3` + modern era update
 - **`1.6.0`** `HashRing` default for `synch`/`asynch` calls in `Tarearbol.DynamicWorker` selection (to preserve idempotency amongst calls)

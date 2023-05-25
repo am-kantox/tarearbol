@@ -471,7 +471,7 @@ defmodule Tarearbol.DynamicManager do
 
       @impl Tarearbol.DynamicManager
       def perform(id, _payload) do
-        Logger.warn(
+        Logger.warning(
           "[🌴] perform for id[#{id}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `perform/2` in your #{inspect(__MODULE__)}\n" <>
@@ -483,7 +483,7 @@ defmodule Tarearbol.DynamicManager do
 
       @impl Tarearbol.DynamicManager
       def call(_message, _from, {id, _payload}) do
-        Logger.warn(
+        Logger.warning(
           "[🌴] call for id[#{id}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `call/3` in your #{inspect(__MODULE__)}\n" <>
@@ -495,7 +495,7 @@ defmodule Tarearbol.DynamicManager do
 
       @impl Tarearbol.DynamicManager
       def cast(_message, {id, _payload}) do
-        Logger.warn(
+        Logger.warning(
           "[🌴] cast for id[#{id}] was executed with state\n\n" <>
             inspect(__state_module__().state()) <>
             "\n\nyou want to override `cast/2` in your #{inspect(__MODULE__)}\n" <>
@@ -523,7 +523,7 @@ defmodule Tarearbol.DynamicManager do
       defoverridable handle_state_change: 1
 
       @impl Tarearbol.DynamicManager
-      def handle_timeout(state), do: Logger.warn("[🌴] a worker is too slow [#{inspect(state)}]")
+      def handle_timeout(state), do: Logger.warning("[🌴] a worker is too slow [#{inspect(state)}]")
 
       defoverridable handle_timeout: 1
 
@@ -723,7 +723,7 @@ defmodule Tarearbol.DynamicManager do
   |a
   defp report_override(nil, mod, kind, name, arity) when name in @reserved,
     do:
-      Logger.warn("""
+      Logger.warning("""
       [🌴] You are trying to override the reserved function in `#{kind} #{inspect(Function.capture(mod, name, arity))}`.
       Please consider choosing another name.
       """)
