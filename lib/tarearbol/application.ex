@@ -70,7 +70,7 @@ defmodule Tarearbol.Application do
     end
   end
 
-  @spec task!((() -> any()) | {module(), atom(), list()}) :: Task.t()
+  @spec task!((-> any()) | {module(), atom(), list()}) :: Task.t()
   def task!(job) when is_function(job, 0),
     do: Task.Supervisor.async_nolink(Tarearbol.Application, job)
 

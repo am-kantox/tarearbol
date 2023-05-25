@@ -61,7 +61,7 @@ defmodule Tarearbol.Scheduler do
   @type runner ::
           {atom(), atom()}
           | {atom(), atom(), list()}
-          | (() -> :halt | {:ok | {:reschedule, binary()}, any()})
+          | (-> :halt | {:ok | {:reschedule, binary()}, any()})
 
   @typedoc """
   Type of possible job schedules to be run repeatedly: binary cron format

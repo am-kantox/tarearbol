@@ -5,7 +5,7 @@ defmodule Tarearbol.Errand do
 
   require Logger
 
-  @typep job :: (() -> any()) | {module(), atom()}
+  @typep job :: (-> any()) | {module(), atom()}
 
   @default_opts [
     repeatedly: false
@@ -95,7 +95,7 @@ defmodule Tarearbol.Errand do
     do: run_at(job, DateTime.from_iso8601(at), opts)
 
   @doc "Spawns the task by calling `run_in` with a zero interval"
-  @spec spawn((() -> any()) | {module(), atom(), list()}, keyword()) :: :ok | Task.t()
+  @spec spawn((-> any()) | {module(), atom(), list()}, keyword()) :: :ok | Task.t()
   def spawn(job, opts \\ opts()), do: run_in(job, :none, opts)
 
   ##############################################################################

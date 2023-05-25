@@ -11,7 +11,7 @@ defmodule Tarearbol.Job do
 
   use Tarearbol.Telemetria
 
-  @type job :: (() -> any()) | {atom(), atom(), [any()]}
+  @type job :: (-> any()) | {atom(), atom(), [any()]}
 
   require Logger
   alias Tarearbol.Utils

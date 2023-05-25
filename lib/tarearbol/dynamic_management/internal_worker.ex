@@ -59,11 +59,15 @@ defmodule Tarearbol.InternalWorker do
   @spec terminate_local_child(worker :: module(), name :: GenServer.name() | pid()) :: any()
   def terminate_local_child(worker, name) do
     case GenServer.whereis(name) do
-      pid when is_pid(pid) -> DynamicSupervisor.terminate_child(worker, pid)
-      other -> Logger.error("[🌴] Failed to terminate worker ‹" <> inspect(name) <> "›, whereis: ‹" <> other <> "›")
+      pid when is_pid(pid) ->
+        DynamicSupervisor.terminate_child(worker, pid)
+
+      other ->
+        Logger.error(
+          "[🌴] Failed to terminate worker ‹" <> inspect(name) <> "›, whereis: ‹" <> other <> "›"
+        )
     end
   end
-
 
   @spec get(module_name :: module(), id :: DynamicManager.id()) :: Enum.t()
   def get(module_name, id), do: GenServer.call(module_name, {:get, id})

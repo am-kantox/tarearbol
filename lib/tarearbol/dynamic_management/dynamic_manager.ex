@@ -84,7 +84,7 @@ defmodule Tarearbol.DynamicManager do
   @typedoc "Post-instantion init handler type, that might be passed to `use DynamicManager` vis `init:`"
   @type init_handler ::
           nil
-          | (() -> Tarearbol.DynamicManager.payload())
+          | (-> Tarearbol.DynamicManager.payload())
           | (Tarearbol.DynamicManager.payload() -> Tarearbol.DynamicManager.payload())
           | (Tarearbol.DynamicManager.id(), Tarearbol.DynamicManager.payload() ->
                Tarearbol.DynamicManager.payload())
@@ -523,7 +523,8 @@ defmodule Tarearbol.DynamicManager do
       defoverridable handle_state_change: 1
 
       @impl Tarearbol.DynamicManager
-      def handle_timeout(state), do: Logger.warning("[🌴] a worker is too slow [#{inspect(state)}]")
+      def handle_timeout(state),
+        do: Logger.warning("[🌴] a worker is too slow [#{inspect(state)}]")
 
       defoverridable handle_timeout: 1
 
