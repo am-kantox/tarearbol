@@ -64,7 +64,7 @@ defmodule Tarearbol.InternalWorker do
 
       other ->
         Logger.error(
-          "[🌴] Failed to terminate worker ‹" <> inspect(name) <> "›, whereis: ‹" <> other <> "›"
+          "[🌴] Failed to terminate worker ‹" <> inspect(name) <> "›, whereis: ‹" <> inspect(other) <> "›"
         )
     end
   end
