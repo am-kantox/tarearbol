@@ -33,7 +33,7 @@ defmodule Tarearbol.Utils do
   def interval(input, opts \\ []) do
     case input do
       0 -> -1
-      0.0 -> -1
+      +0.0 -> -1
       msec when is_integer(msec) and msec > 0 -> msec
       sec when is_float(sec) and sec > 0 -> round(1_000 * sec)
       :tiny -> 10

@@ -258,6 +258,8 @@ defmodule Tarearbol.DynamicManager do
       @spec __dynamic_supervisor_module__ :: module()
       def __dynamic_supervisor_module__, do: __child_mod__(Tarearbol.DynamicSupervisor)
 
+      @state_module Module.concat(@__namespace__, State)
+
       state_module_ast =
         quote generated: true, location: :keep do
           @moduledoc false
@@ -273,15 +275,31 @@ defmodule Tarearbol.DynamicManager do
                   ring: HashRing.t()
                 }
           @this {:global, __MODULE__}
+          @this_module unquote(@state_module)
 
           defstruct [:manager, :ring, state: :down, children: %{}]
 
-          @spec start_link([{:manager, atom()}]) :: GenServer.on_start()
-          def start_link(manager: manager) do
-            case GenServer.start_link(__MODULE__, [manager: manager], name: @this) do
+          @spec start_link([{:manager, atom()} | {:cached_state, t()}]) :: GenServer.on_start()
+          def start_link(opts) do
+            unless Keyword.has_key?(opts, :manager),
+              do: raise(KeyError.exception(":manager option is mandatory"))
+
+            case GenServer.start_link(__MODULE__, opts, name: @this) do
               {:error, {:already_started, _}} -> :ignore
               other -> other
             end
+          end
+
+          @spec get_cached_state() :: t()
+          def get_cached_state, do: :persistent_term.get(@this_module, struct!(__MODULE__, []))
+          @spec set_cached_state(t()) :: :ok
+          def set_cached_state(%__MODULE__{} = state),
+            do: :persistent_term.put(@this_module, state)
+
+          @spec reset_cached_state() :: t()
+          def reset_cached_state do
+            get_cached_state()
+            |> tap(fn _ -> :persistent_term.erase(@this_module) end)
           end
 
           @spec state :: t()
@@ -321,15 +339,23 @@ defmodule Tarearbol.DynamicManager do
 
           @impl GenServer
           def init(opts) do
+            {cached_state, opts} = Keyword.pop_lazy(opts, :cached_state, &reset_cached_state/0)
+
             opts =
               opts
               |> Keyword.put(:state, :starting)
               |> Keyword.put_new(:ring, HashRing.new())
 
-            state = struct!(__MODULE__, opts)
+            state = struct!(cached_state, opts)
 
             state.manager.handle_state_change(:starting)
             {:ok, state}
+          end
+
+          @impl GenServer
+          def terminate(reason, state) do
+            :rpc.multicall(Node.list(), __MODULE__, :set_cached_state, [state])
+            :rpc.multicall(Node.list(), state.manager, :restate!, [])
           end
 
           @impl GenServer
@@ -426,7 +452,6 @@ defmodule Tarearbol.DynamicManager do
             do: {:noreply, %{state | state: new_state}}
         end
 
-      @state_module Module.concat(@__namespace__, State)
       Module.create(@state_module, state_module_ast, __ENV__)
 
       @doc false
@@ -434,6 +459,7 @@ defmodule Tarearbol.DynamicManager do
       def __state_module__, do: @state_module
 
       @registry_module Module.concat(@__namespace__, Registry)
+      @state_supervisor_module Module.concat(@__namespace__, StateSupervisor)
 
       @doc false
       @spec __registry_module__ :: module()
@@ -540,7 +566,11 @@ defmodule Tarearbol.DynamicManager do
       def init(opts) do
         children = [
           {Registry, [keys: :unique, name: @registry_module]},
-          {@state_module, [manager: __MODULE__]},
+          {Tarearbol.StateSupervisor,
+           [
+             state_module_spec: {@state_module, [manager: __MODULE__]},
+             name: @state_supervisor_module
+           ]},
           {Tarearbol.DynamicSupervisor, Keyword.put(opts, :manager, __MODULE__)},
           {Tarearbol.InternalWorker, [manager: __MODULE__]}
         ]
@@ -555,6 +585,9 @@ defmodule Tarearbol.DynamicManager do
 
         Supervisor.init(children, strategy: :rest_for_one)
       end
+
+      @doc false
+      def restate!, do: GenServer.cast(@state_supervisor_module, :restart!)
 
       @doc """
       Performs a `GenServer.call/3` to the worker specified by `id`.
