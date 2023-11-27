@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.10.3`** OTP27 ready + offloading state in cluster when node goes down
 - **`1.10.1`** OTP26 ready
 - **`1.10.0`** single global state process in cluster + `put_new/3` to avoid flip-flopping children in cluster
 - **`1.8.0`** finally standardized and deprecated multi in favor of normal `put/3`/`get/2`/`del/3`
