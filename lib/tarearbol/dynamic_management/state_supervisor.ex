@@ -11,7 +11,8 @@ defmodule Tarearbol.StateSupervisor do
     def init(opts), do: {:ok, opts}
 
     @impl GenServer
-    def handle_cast(:restart!, []), do: raise("💥 → Planned `Tarearbol` state restart")
+    def handle_cast(:restart!, name: name),
+      do: raise("💥 → Planned `Tarearbol` state [#{inspect(name)}] restart")
   end
 
   use Supervisor
