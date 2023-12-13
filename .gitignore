@@ -31,5 +31,8 @@ erl_crash.dump
 
 /.vscode/
 
+/.tool-versions
+/.elixir-tools/
+
 # Telemetria events
 config/.telemetria.config.json

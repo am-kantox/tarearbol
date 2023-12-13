@@ -181,7 +181,7 @@ defmodule Tarearbol.DynamicManager do
     defstruct [:pid, :value, :opts, :busy?]
   end
 
-  @defaults [timeout: 1_000, lull: 1.1, payload: nil]
+  @defaults [instant_perform?: false, timeout: 1_000, lull: 1.1, payload: nil]
 
   @doc false
   defmacro __using__(opts) do
@@ -209,6 +209,7 @@ defmodule Tarearbol.DynamicManager do
 
       @doc false
       @spec __defaults__ :: %{
+              instant_perform?: boolean(),
               timeout: non_neg_integer(),
               lull: float(),
               payload: term()
