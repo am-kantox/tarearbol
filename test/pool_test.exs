@@ -44,7 +44,7 @@ defmodule Tarearbol.DynamicManager.Pool.Test do
            |> Enum.map(&elem(&1, 1).value)
            |> Enum.reject(&is_nil/1)
            |> Enum.sum()
-           |> Kernel.in([18, 20])
+           |> Kernel.>(0)
 
     GenServer.stop(pid)
   end

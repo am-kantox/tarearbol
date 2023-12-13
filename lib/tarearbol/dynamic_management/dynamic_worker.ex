@@ -20,6 +20,7 @@ defmodule Tarearbol.DynamicWorker do
           name: any(),
           payload: Tarearbol.DynamicManager.payload(),
           timeout: non_neg_integer(),
+          instant_perform?: boolean(),
           lull: float()
         }) :: GenServer.on_start()
   def start_link(opts) do
@@ -38,17 +39,24 @@ defmodule Tarearbol.DynamicWorker do
   @impl GenServer
   def init(opts) do
     Process.flag(:trap_exit, true)
-    schedule_work(opts.timeout)
     {:ok, opts, {:continue, :init}}
   end
 
   @impl GenServer
   def handle_continue(:init, %{manager: manager, id: id, payload: payload} = state) do
-    case manager.__init_handler__() do
-      nil -> {:noreply, state}
-      f when is_function(f, 0) -> {:noreply, %{state | payload: f.()}}
-      f when is_function(f, 1) -> {:noreply, %{state | payload: f.(payload)}}
-      f when is_function(f, 2) -> {:noreply, %{state | payload: f.(id, payload)}}
+    state =
+      case manager.__init_handler__() do
+        nil -> state
+        f when is_function(f, 0) -> %{state | payload: f.()}
+        f when is_function(f, 1) -> %{state | payload: f.(payload)}
+        f when is_function(f, 2) -> %{state | payload: f.(id, payload)}
+      end
+
+    if state.instant_perform? do
+      handle_info(:work, state)
+    else
+      schedule_work(state.timeout)
+      {:noreply, state}
     end
   end
 
