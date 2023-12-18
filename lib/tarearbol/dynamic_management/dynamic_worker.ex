@@ -20,7 +20,7 @@ defmodule Tarearbol.DynamicWorker do
           name: any(),
           payload: Tarearbol.DynamicManager.payload(),
           timeout: non_neg_integer(),
-          instant_perform?: boolean(),
+          instant_perform?: boolean() | non_neg_integer(),
           lull: float()
         }) :: GenServer.on_start()
   def start_link(opts) do
@@ -52,10 +52,13 @@ defmodule Tarearbol.DynamicWorker do
         f when is_function(f, 2) -> %{state | payload: f.(id, payload)}
       end
 
-    if state.instant_perform? do
+    if true == state.instant_perform? do
       handle_info(:work, state)
     else
-      schedule_work(state.timeout)
+      schedule_work(
+        if is_integer(state.instant_perform?), do: state.instant_perform?, else: state.timeout
+      )
+
       {:noreply, state}
     end
   end
@@ -130,8 +133,7 @@ defmodule Tarearbol.DynamicWorker do
   end
 
   @spec schedule_work(timeout :: integer()) :: reference()
-  defp schedule_work(timeout) when timeout <= 0, do: make_ref()
-  defp schedule_work(timeout) when timeout < 100, do: schedule_work(100)
+  defp schedule_work(timeout) when timeout < 0, do: make_ref()
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 
   @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
