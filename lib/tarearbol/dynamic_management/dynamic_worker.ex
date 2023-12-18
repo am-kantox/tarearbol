@@ -133,7 +133,7 @@ defmodule Tarearbol.DynamicWorker do
   end
 
   @spec schedule_work(timeout :: integer()) :: reference()
-  defp schedule_work(timeout) when timeout < 0, do: make_ref()
+  defp schedule_work(timeout) when not is_integer(timeout) or timeout <= 0, do: make_ref()
   defp schedule_work(timeout), do: Process.send_after(self(), :work, timeout)
 
   @spec handle_request(Tarearbol.DynamicManager.id(), module()) :: Tarearbol.DynamicManager.id()
