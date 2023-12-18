@@ -1,6 +1,10 @@
 defmodule Tarearbol.Full do
   @moduledoc false
-  use Tarearbol.Pool, init: &Tarearbol.Full.continue/0, pool_size: 2, pickup: :random
+  use Tarearbol.Pool,
+    init: &Tarearbol.Full.continue/0,
+    pool_size: 2,
+    pickup: :random,
+    defaults: [timeout: 0]
 
   def continue, do: 0
 

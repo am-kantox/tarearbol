@@ -30,7 +30,7 @@ defmodule Tarearbol.Pool do
   @doc false
   defmacro __using__(opts) do
     pool_size = Utils.get_opt(opts, :pool_size, 5)
-    timeout = Utils.get_opt(opts, :pool_timeout, 100)
+    timeout = Utils.get_opt(opts, :pool_timeout, 0)
     pickup = Utils.get_opt(opts, :pickup, :hashring)
 
     payload =
