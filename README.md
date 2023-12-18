@@ -136,7 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
-- **`1.11.1`** `defaults: [instant_perform?: integer()]` to run `perform/2` in given number of msecs after start 
+- **`1.11.2`** `defaults: [instant_perform?: integer()]` to run `perform/2` in given number of msecs after start 
 - **`1.11.0`** `defaults: [instant_perform?: true]` to instantly run `perform/2` upon start 
 - **`1.10.3`** OTP27 ready + offloading state in cluster when node goes down
 - **`1.10.1`** OTP26 ready
