@@ -27,4 +27,10 @@ defmodule DynamicManager do
   end
 end
 
+case Tarearbol.Scheduler.start_link() do
+  {:ok, _pid} -> :ok
+  {:error, {:already_started, _pid}} -> :ok
+  _ -> raise "Tarearbol.Scheduler.start_link/0"
+end
+
 ExUnit.start(exclude: :skip, capture_log: true)
