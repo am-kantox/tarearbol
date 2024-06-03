@@ -4,7 +4,7 @@ defmodule Tarearbol.Mixfile do
   use Mix.Project
 
   @app :tarearbol
-  @version "1.11.2"
+  @version "1.12.0"
 
   def project do
     [
@@ -52,7 +52,6 @@ defmodule Tarearbol.Mixfile do
       {:boundary, "~> 0.4"},
       {:libring, "~> 1.4"},
       # kantox
-      {:formulae, "~> 0.5"},
       {:telemetria, "~> 0.5", optional: true},
       {:cloister, "~> 0.1", optional: true},
       # dev / test
@@ -62,7 +61,7 @@ defmodule Tarearbol.Mixfile do
       {:ex_doc, "~> 0.11", only: :dev},
       {:test_cluster_task, "~> 0.1", only: [:test, :ci]},
       {:mock, "~> 0.2", only: [:test, :ci]},
-      {:stream_data, "~> 0.4", only: [:test, :ci]}
+      {:stream_data, "~> 0.4 or ~> 1.0"}
     ]
   end
 

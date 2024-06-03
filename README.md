@@ -7,7 +7,7 @@
 ```elixir
 def deps do
   [
-    {:tarearbol, "~> 1.2"}
+    {:tarearbol, "~> 1.12"}
   ]
 end
 ```
@@ -136,6 +136,7 @@ Tarearbol.drain
 
 ### Changelog
 
+- **`1.12.0`** decoupled from `:formulae` dependency, removed `Crontab`
 - **`1.11.2`** `defaults: [instant_perform?: integer()]` to run `perform/2` in given number of msecs after start 
 - **`1.11.0`** `defaults: [instant_perform?: true]` to instantly run `perform/2` upon start 
 - **`1.10.3`** OTP27 ready + offloading state in cluster when node goes down
