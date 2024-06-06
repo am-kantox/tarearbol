@@ -29,7 +29,7 @@ if match?({:module, Cloister}, Code.ensure_compiled(Cloister)) do
     @behaviour Cloister.Listener
     require Logger
 
-    def on_state_change(from, state) do
+    def on_state_change(from, to, state) do
       Logger.debug("[🕸️ @#{node()}] 🔄 from: #{from}, state: " <> inspect(state))
     end
   end
